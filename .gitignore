@@ -1,0 +1,5 @@
+# 临时/缓存文件
+*.pyc
+__pycache__/
+.DS_Store
+Thumbs.db

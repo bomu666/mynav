@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyNav — 个人资源导航</title>
+<meta name="description" content="个人资源导航站，聚合 AI工具、编程开发、嵌入式硬件、动漫追番、资源搜索等常用网站入口">
+<style>
+/* ===== CSS Variables ===== */
+:root {
+  --bg: #0a0a14;
+  --surface: #141428;
+  --surface2: #1e1e3a;
+  --border: #282850;
+  --text: #e4e4f0;
+  --text-dim: #8080a8;
+  --primary: #7c5cfc;
+  --primary-glow: rgba(124,92,252,0.25);
+  --green: #00d69c; --blue: #54a0ff; --orange: #ff9f43;
+  --pink: #ff6b81; --cyan: #00d2d3; --yellow: #feca57;
+  --radius: 14px; --transition: 0.2s ease;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter','PingFang SC','Microsoft YaHei',sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% -10%, var(--primary-glow), transparent),
+    radial-gradient(ellipse 50% 30% at 85% 90%, rgba(0,210,156,0.06), transparent);
+  background-attachment: fixed;
+}
+.container { max-width: 1280px; margin:0 auto; padding:0 24px; }
+
+/* ===== Header ===== */
+header { text-align:center; padding:56px 0 20px; }
+header h1 {
+  font-size:2.4rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg, var(--primary), var(--cyan));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+header .sub { color:var(--text-dim); margin-top:6px; font-size:0.92rem; }
+#stats-bar {
+  display:flex; gap:16px; justify-content:center; flex-wrap:wrap;
+  margin-top:16px; font-size:0.8rem; color:var(--text-dim);
+}
+#stats-bar span { background:var(--surface2); padding:4px 12px; border-radius:12px; }
+
+/* ===== Search ===== */
+.search-wrap { max-width:520px; margin:0 auto 28px; position:relative; }
+.search-wrap input {
+  width:100%; padding:14px 52px 14px 20px;
+  border-radius:28px; border:2px solid var(--border);
+  background:var(--surface); color:var(--text); font-size:0.95rem;
+  outline:none; transition:border var(--transition), box-shadow var(--transition);
+}
+.search-wrap input:focus { border-color:var(--primary); box-shadow:0 0 28px var(--primary-glow); }
+.search-wrap kbd {
+  position:absolute; right:16px; top:50%; transform:translateY(-50%);
+  background:var(--surface2); border:1px solid var(--border);
+  padding:2px 8px; border-radius:6px; font-size:0.7rem; color:var(--text-dim);
+  pointer-events:none; transition:opacity 0.2s;
+}
+.search-wrap input:focus + kbd { opacity:0; }
+
+/* ===== Tabs ===== */
+.tabs { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:28px; }
+.tab {
+  padding:7px 18px; border-radius:18px; border:1px solid var(--border);
+  background:transparent; color:var(--text-dim); cursor:pointer;
+  font-size:0.85rem; transition:all var(--transition); white-space:nowrap;
+  user-select:none;
+}
+.tab:hover { color:var(--text); border-color:var(--text-dim); }
+.tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+.tab .count { margin-left:3px; font-size:0.7rem; opacity:0.65; }
+.tab-fav { color:var(--yellow) !important; border-color:var(--yellow) !important; }
+.tab-fav.active { background:var(--yellow) !important; color:#000 !important; }
+
+/* ===== Grid ===== */
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(290px, 1fr));
+  gap:14px; margin-bottom:48px;
+}
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:18px;
+  transition:all var(--transition); cursor:pointer;
+  position:relative; overflow:hidden;
+  display:flex; flex-direction:column;
+}
+.card:hover { transform:translateY(-3px); border-color:var(--card-accent,var(--primary)); box-shadow:0 8px 32px rgba(0,0,0,0.35); }
+.card::before {
+  content:''; position:absolute; top:0; left:0; right:0;
+  height:3px; background:var(--card-accent,var(--primary));
+  border-radius:var(--radius) var(--radius) 0 0;
+}
+.card.visited::after {
+  content:'✓'; position:absolute; top:10px; right:36px;
+  font-size:0.65rem; color:var(--green); opacity:0.7;
+}
+.card-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.card-icon {
+  width:38px; height:38px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.2rem; background:var(--surface2); flex-shrink:0;
+}
+.card-title { font-weight:600; font-size:1rem; }
+.card-desc { color:var(--text-dim); font-size:0.82rem; line-height:1.5; flex:1; }
+.card-tags { display:flex; gap:5px; flex-wrap:wrap; margin-top:10px; }
+.tag { padding:2px 9px; border-radius:8px; font-size:0.68rem; background:rgba(255,255,255,0.04); color:var(--text-dim); }
+.tag.hot { background:rgba(255,107,129,0.1); color:var(--pink); }
+
+/* Star button */
+.star-btn {
+  position:absolute; top:10px; right:10px;
+  background:none; border:none; font-size:1rem; cursor:pointer;
+  opacity:0; transition:all var(--transition); z-index:2;
+  color:var(--text-dim); padding:4px;
+}
+.card:hover .star-btn { opacity:1; }
+.star-btn.faved { opacity:1 !important; color:var(--yellow); }
+
+/* ===== No results ===== */
+.no-results { text-align:center; padding:60px 20px; color:var(--text-dim); display:none; }
+.no-results .emoji { font-size:3rem; display:block; margin-bottom:12px; }
+
+/* ===== Footer ===== */
+footer { text-align:center; padding:28px 0 40px; border-top:1px solid var(--border); color:var(--text-dim); font-size:0.78rem; }
+footer a { color:var(--primary); text-decoration:none; }
+
+/* ===== Back to top ===== */
+#back-top {
+  position:fixed; bottom:28px; right:28px; width:42px; height:42px;
+  border-radius:50%; border:1px solid var(--border); background:var(--surface);
+  color:var(--text); cursor:pointer; font-size:1rem;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transform:translateY(10px); transition:all var(--transition); z-index:99;
+}
+#back-top.visible { opacity:1; transform:translateY(0); }
+
+/* ===== Accent colors ===== */
+.a-purple{--card-accent:#7c5cfc} .a-green{--card-accent:#00d69c}
+.a-blue{--card-accent:#54a0ff} .a-orange{--card-accent:#ff9f43}
+.a-pink{--card-accent:#ff6b81} .a-cyan{--card-accent:#00d2d3}
+.a-yellow{--card-accent:#feca57} .a-red{--card-accent:#ff4757}
+
+/* ===== Responsive ===== */
+@media(max-width:640px){
+  header{padding:36px 0 16px} header h1{font-size:1.6rem}
+  .grid{grid-template-columns:1fr} .tabs{gap:3px}
+  .tab{padding:5px 12px; font-size:0.78rem}
+  #stats-bar{font-size:0.72rem; gap:6px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>MyNav</h1>
+  <p class="sub">个人资源导航 · 聚合工具 / 开发 / AI / 动漫 / 资源</p>
+  <div id="stats-bar"></div>
+</header>
+
+<div class="search-wrap">
+  <input type="text" id="search" placeholder="搜索..." autocomplete="off">
+  <kbd>Ctrl+K</kbd>
+</div>
+
+<div class="tabs" id="tabs"></div>
+<div class="grid" id="grid"></div>
+<div class="no-results" id="no-results">
+  <span class="emoji">🔍</span><p>没有找到匹配的资源</p>
+</div>
+
+<footer>
+  MyNav v2 &nbsp;|&nbsp; Ctrl+K 搜索 &nbsp;|&nbsp; 数字键 1-9 切换分类 &nbsp;|&nbsp; 点击 ☆ 收藏
+</footer>
+</div>
+
+<button id="back-top">↑</button>
+
+<script>
+// ===================================================================
+// 链接数据库 — 所有网站入口在这里管理
+// ===================================================================
+const LINKS = [
+  // ──── AI 工具 ──────────────────────────────
+  { title:"ChatGPT", desc:"OpenAI 官方对话助手，GPT-4 驱动", url:"https://chat.openai.com", icon:"🤖", tags:["AI对话"], cat:"ai", a:"green" },
+  { title:"Claude", desc:"Anthropic 出品，擅长长文本分析与编程", url:"https://claude.ai", icon:"🧠", tags:["AI对话","编程"], cat:"ai", a:"purple" },
+  { title:"LiblibAI", desc:"AI 绘画模型平台，海量 Checkpoint 与 LoRA", url:"https://www.liblib.art", icon:"🎨", tags:["AI绘画"], cat:"ai", a:"pink" },
+  { title:"Hugging Face", desc:"全球最大 AI 模型社区与 Demo 托管", url:"https://huggingface.co", icon:"🤗", tags:["模型库","开源"], cat:"ai", a:"orange" },
+  { title:"ComfyUI", desc:"节点式 AI 绘画工作流，比 WebUI 更灵活", url:"https://github.com/comfyanonymous/ComfyUI", icon:"🔧", tags:["工作流","开源"], cat:"ai", a:"blue" },
+  { title:"Cherry Studio", desc:"全平台 AI 对话客户端，支持多模型", url:"https://cherry-ai.com", icon:"🍒", tags:["客户端"], cat:"ai", a:"pink" },
+  { title:"Google AI Studio", desc:"Google 免费 Gemini API 开发平台", url:"https://aistudio.google.com", icon:"🧪", tags:["API","免费"], cat:"ai", a:"green" },
+  { title:"Groq", desc:"超快速 LLM 推理 API，免费额度慷慨", url:"https://console.groq.com", icon:"⚡", tags:["API","免费"], cat:"ai", a:"orange" },
+
+  // ──── 编程开发 ──────────────────────────────
+  { title:"GitHub", desc:"全球最大代码托管平台", url:"https://github.com", icon:"🐙", tags:["代码","开源"], cat:"dev", a:"purple" },
+  { title:"Gitee", desc:"国内代码托管，访问更快", url:"https://gitee.com", icon:"🏠", tags:["代码"], cat:"dev", a:"red" },
+  { title:"Stack Overflow", desc:"程序员问答社区，99% bug 有人踩过", url:"https://stackoverflow.com", icon:"📚", tags:["问答"], cat:"dev", a:"orange" },
+  { title:"VS Code", desc:"微软免费代码编辑器，插件生态最强", url:"https://code.visualstudio.com", icon:"💻", tags:["编辑器"], cat:"dev", a:"blue" },
+  { title:"npm", desc:"Node.js 包管理器", url:"https://www.npmjs.com", icon:"📦", tags:["包管理","JS"], cat:"dev", a:"pink" },
+  { title:"PyPI", desc:"Python 包索引", url:"https://pypi.org", icon:"🐍", tags:["包管理","Python"], cat:"dev", a:"blue" },
+  { title:"CodePen", desc:"在线前端代码编辑器与社区", url:"https://codepen.io", icon:"✏️", tags:["前端","在线"], cat:"dev", a:"green" },
+  { title:"DevDocs", desc:"多语言 API 文档聚合，离线可用", url:"https://devdocs.io", icon:"📖", tags:["文档"], cat:"dev", a:"cyan" },
+
+  // ──── 嵌入式 / 硬件 ──────────────────────────
+  { title:"STM32 MCU Wiki", desc:"STM32 官方文档与开发指南", url:"https://wiki.st.com/stm32mcu", icon:"🔌", tags:["STM32","官方"], cat:"embed", a:"blue" },
+  { title:"立创开源广场", desc:"国内最大开源硬件平台，海量 PCB 方案", url:"https://oshwhub.com", icon:"⚡", tags:["PCB","开源"], cat:"embed", a:"green" },
+  { title:"正点原子", desc:"STM32 开发板龙头，教程与资料下载", url:"https://www.alientek.com", icon:"🛠️", tags:["开发板","教程"], cat:"embed", a:"orange" },
+  { title:"电子工程世界", desc:"电子工程师社区与论坛", url:"https://www.eeworld.com.cn", icon:"📡", tags:["论坛"], cat:"embed", a:"cyan" },
+  { title:"野火电子", desc:"STM32/嵌入式开发板与教程", url:"https://www.firebbs.cn", icon:"🔥", tags:["开发板","教程"], cat:"embed", a:"red" },
+  { title:"Arduino", desc:"开源电子原型平台，入门友好", url:"https://www.arduino.cc", icon:"🤖", tags:["开源","入门"], cat:"embed", a:"green" },
+  { title:"CSDN", desc:"国内最大 IT 技术社区", url:"https://www.csdn.net", icon:"📝", tags:["博客","社区"], cat:"embed", a:"pink" },
+  { title:"电子发烧友", desc:"电子工程师技术交流平台", url:"https://www.elecfans.com", icon:"💡", tags:["电子","论坛"], cat:"embed", a:"orange" },
+
+  // ──── 动漫资源 ──────────────────────────────
+  { title:"Omofun 动漫", desc:"日本新番、经典动漫在线看，更新速度快", url:"https://omofun.wwwnav.com/", icon:"▶️", tags:["在线播放","番剧更新"], cat:"anime", a:"pink" },
+  { title:"樱花动漫", desc:"知名度高，涵盖新番连载与经典合集", url:"https://yinghuadongman.sodanav.com", icon:"🌸", tags:["新番","经典"], cat:"anime", a:"pink" },
+  { title:"AGE 动漫", desc:"专业在线动漫网站，番剧大全实时更新", url:"https://agedongman.sodanav.com", icon:"📺", tags:["动漫库","实时"], cat:"anime", a:"blue" },
+  { title:"囧次元", desc:"全网最新动漫资源在线看", url:"https://jiongciyuan.sodanav.com", icon:"😆", tags:["连载","番剧"], cat:"anime", a:"purple" },
+  { title:"clicli 动漫", desc:"弹幕互动式动漫，贴近二次元习惯", url:"https://cliclidongman.sodanav.com", icon:"💬", tags:["弹幕","二次元"], cat:"anime", a:"purple" },
+  { title:"动漫花园", desc:"动漫花园资源网，资深漫迷首选", url:"https://dongmanhuayuan.sodanav.com", icon:"🌿", tags:["索引","资料"], cat:"anime", a:"green" },
+  { title:"次元城动画", desc:"海量蓝光番剧免费看，支持 APP", url:"https://cycani.sodanav.com/", icon:"🏰", tags:["蓝光","APP"], cat:"anime", a:"blue" },
+  { title:"风车动漫", desc:"专注动漫的门户网站，高清免费", url:"https://fcdm.xxsnav.com/", icon:"🎡", tags:["老牌","高清"], cat:"anime", a:"orange" },
+  { title:"番茶屋", desc:"日本动漫番剧免费高清观看", url:"http://fanchawu.hezidh.com/", icon:"🍵", tags:["高清","日漫"], cat:"anime", a:"green" },
+  { title:"花子动漫", desc:"新番在线观看，涵盖新番经典全集", url:"https://huazidm.hezidh.com/", icon:"🌺", tags:["免费","新番"], cat:"anime", a:"pink" },
+  { title:"喵物次元", desc:"高质量追番动漫网站", url:"https://miaowuciyuan.2rdh.com", icon:"🐱", tags:["次元","追番"], cat:"anime", a:"purple" },
+  { title:"嗷呜动漫", desc:"最优质的番剧在线观看", url:"https://aowutv.wwwnav.com/", icon:"🐺", tags:["番剧","播放"], cat:"anime", a:"orange" },
+  { title:"动漫窝", desc:"最新超清日漫全集在线看", url:"https://dmwo.litxdh.com/", icon:"🏠", tags:["超清","日漫"], cat:"anime", a:"orange" },
+  { title:"风铃动漫", desc:"F站追番平台，高清新番经典", url:"https://aafun.litxdh.com/", icon:"🎐", tags:["F站","极速"], cat:"anime", a:"cyan" },
+  { title:"MuteFun动漫", desc:"动漫新番高清免费看，纯净体验", url:"https://mutedm.litxdh.com/", icon:"🔇", tags:["纯净","新番"], cat:"anime", a:"purple" },
+  { title:"Animoe动漫", desc:"无广告免费日漫追番，极致高清", url:"https://animoe.ggonav.com/", icon:"✨", tags:["无广告","日漫"], cat:"anime", a:"blue" },
+  { title:"佩可爱动漫", desc:"最可爱日本 ACG 动漫网", url:"https://pekolove.ggonav.com/", icon:"💕", tags:["ACG","可爱"], cat:"anime", a:"pink" },
+  { title:"樱之空动漫", desc:"樱空学园，高清日漫日剧", url:"https://skr.ggonav.com/", icon:"🌸", tags:["日剧","高清"], cat:"anime", a:"pink" },
+  { title:"Kimivod", desc:"电视剧、电影、动漫、综艺在线看", url:"https://kimivod.sodanav.com/", icon:"🎥", tags:["影视","超清"], cat:"anime", a:"purple" },
+  { title:"叽哔动漫", desc:"免费高清在线动漫观看", url:"https://jibi.sodanav.com/", icon:"🐥", tags:["日漫","高清"], cat:"anime", a:"yellow" },
+  { title:"稀饭动漫", desc:"免费高清动漫在线看", url:"https://xifandongman.wwwnav.com", icon:"🍚", tags:["免费","高清"], cat:"anime", a:"orange" },
+  { title:"番薯动漫", desc:"您追番的最佳归属", url:"https://fanshudongman.wwwnav.com", icon:"🍠", tags:["新番","追更"], cat:"anime", a:"orange" },
+  { title:"打驴动漫", desc:"所有樱花动漫番剧免费看", url:"https://dalvdongman.sodanav.com", icon:"🐴", tags:["日漫","国漫"], cat:"anime", a:"cyan" },
+  { title:"二矿动漫", desc:"超高清画质的动漫网站", url:"https://erkuangdongman.sodanav.com", icon:"💎", tags:["高清","日漫"], cat:"anime", a:"blue" },
+  { title:"柒番", desc:"动漫新番在线看", url:"https://qifandongman.sodanav.com", icon:"7️⃣", tags:["番剧","日漫"], cat:"anime", a:"red" },
+  { title:"5DM 弹幕网", desc:"D站，干净的弹幕视频网", url:"https://5danmuwang.sodanav.com", icon:"🎯", tags:["弹幕","D站"], cat:"anime", a:"red" },
+  { title:"E站弹幕网", desc:"专业二次元 ACG 社区", url:"https://ezdw.2rdh.com/", icon:"🇪", tags:["弹幕","ACG"], cat:"anime", a:"blue" },
+  { title:"漫猫动漫", desc:"免费高清动漫在线观看与BT下载", url:"https://manmaodongman.2rdh.com", icon:"🐱", tags:["高清","BT"], cat:"anime", a:"green" },
+  { title:"哔咪动漫", desc:"M站，最新动漫免费看", url:"https://bimidongman.2rdh.com", icon:"📺", tags:["免费","M站"], cat:"anime", a:"purple" },
+  { title:"橘子动漫", desc:"高清动漫在线看，更新及时", url:"https://juzidongman.2rdh.com", icon:"🍊", tags:["高清","及时"], cat:"anime", a:"orange" },
+  { title:"C哩动漫", desc:"二次元的异世界之旅", url:"https://clidongman.2rdh.com", icon:"🌍", tags:["二次元","番剧"], cat:"anime", a:"purple" },
+  { title:"咕咕番", desc:"日漫番剧在线看", url:"https://gugufan.hezidh.com/", icon:"🕊️", tags:["番剧","日漫"], cat:"anime", a:"blue" },
+  { title:"MX 动漫", desc:"主打视频体验，整合大量番外", url:"https://mxdmtv.2rdh.com/", icon:"🎬", tags:["视频","番外"], cat:"anime", a:"blue" },
+  { title:"NT 动漫", desc:"专注资源整理，页面结构清晰", url:"https://ntdongman.2rdh.com/", icon:"📋", tags:["资源","清晰"], cat:"anime", a:"blue" },
+  { title:"NyaFun 动漫", desc:"轻量化体验，操作简单", url:"https://nyafundongman.sodanav.com", icon:"😺", tags:["轻量","活泼"], cat:"anime", a:"cyan" },
+  { title:"火狼动漫", desc:"稳定播放，日常追番实用之选", url:"https://huolang.2rdh.com/", icon:"🐺", tags:["稳定","追番"], cat:"anime", a:"orange" },
+  { title:"哈哩哈哩", desc:"老牌站点，补番回顾经典宝库", url:"https://halihali.2rdh.com", icon:"🎮", tags:["老牌","经典"], cat:"anime", a:"blue" },
+  { title:"漫岛动漫", desc:"综合型站点，各层级爱好者适合", url:"https://mandaodongman.sodanav.com", icon:"🏝️", tags:["综合","合集"], cat:"anime", a:"green" },
+  { title:"萌番", desc:"二次元动漫迷专属追番圣地", url:"https://mengfan.wwwnav.com", icon:"🌸", tags:["番剧","索引"], cat:"anime", a:"pink" },
+  { title:"Bangumi", desc:"动漫/音乐/游戏 ACG 评分社区", url:"https://bangumi.ggonav.com/", icon:"⭐", tags:["评分","ACG"], cat:"anime", a:"yellow" },
+  { title:"次元小镇", desc:"二次元动漫爱好者分享社区", url:"https://dimtown.2rdh.com/", icon:"🏘️", tags:["社区","分享"], cat:"anime", a:"purple" },
+  { title:"次元狗动漫", desc:"ACG 分享交流社区", url:"https://ciyuangoudongman.sodanav.com", icon:"🐶", tags:["ACG","交流"], cat:"anime", a:"orange" },
+  { title:"Tina ACG 番剧网", desc:"最新最快的番剧视频在线看", url:"https://tinaacg.wwwnav.com", icon:"⚡", tags:["ACG","番剧"], cat:"anime", a:"red" },
+  { title:"ACG 里世界", desc:"深度 ACG 用户的精神乐园", url:"https://acgnzone.ggonav.com/", icon:"🌌", tags:["ACG","深度"], cat:"anime", a:"purple" },
+  { title:"trace.moe", desc:"截图识别，反查动画来源神器", url:"https://tracemoe.xxsnav.com/", icon:"🔍", tags:["识别","工具"], cat:"anime", a:"cyan" },
+  { title:"SauceNAO", desc:"以图搜源，查找画面出处", url:"https://saucenao.xxsnav.com/", icon:"🖼️", tags:["搜图","工具"], cat:"anime", a:"cyan" },
+  { title:"Animeko", desc:"一站式在线弹幕追番平台", url:"https://animeko.sodanav.com/", icon:"🎌", tags:["弹幕","一站式"], cat:"anime", a:"pink" },
+  { title:"萌玩 ACG", desc:"泛二次元文化，不限于动画", url:"https://mengwanacg.2rdh.com/", icon:"🎪", tags:["ACG","文化"], cat:"anime", a:"green" },
+
+  // ──── 资源搜索 ──────────────────────────────
+  { title:"Google", desc:"全球搜索引擎，英文内容质量高", url:"https://www.google.com", icon:"🔍", tags:["搜索"], cat:"search", a:"blue" },
+  { title:"Bing", desc:"微软搜索，国内可直接访问", url:"https://www.bing.com", icon:"🎯", tags:["搜索"], cat:"search", a:"cyan" },
+  { title:"DuckDuckGo", desc:"隐私优先搜索引擎，不追踪用户", url:"https://duckduckgo.com", icon:"🦆", tags:["搜索","隐私"], cat:"search", a:"orange" },
+  { title:"Z-Library", desc:"全球最大电子书库", url:"https://z-lib.io", icon:"📖", tags:["电子书"], cat:"search", a:"green" },
+  { title:"SCI-HUB", desc:"学术论文免费下载", url:"https://sci-hub.se", icon:"📄", tags:["论文","学术"], cat:"search", a:"pink" },
+
+  // ──── 学习资源 ──────────────────────────────
+  { title:"B站技术区", desc:"免费视频教程的天堂", url:"https://www.bilibili.com/v/tech", icon:"🎓", tags:["视频","免费"], cat:"learn", a:"pink" },
+  { title:"菜鸟教程", desc:"前端/后端/数据库入门教程", url:"https://www.runoob.com", icon:"🦜", tags:["入门","全栈"], cat:"learn", a:"green" },
+  { title:"MDN", desc:"Web 标准权威参考文档", url:"https://developer.mozilla.org", icon:"📘", tags:["前端","文档"], cat:"learn", a:"blue" },
+  { title:"LeetCode", desc:"算法刷题平台，面试必备", url:"https://leetcode.cn", icon:"⚔️", tags:["算法","面试"], cat:"learn", a:"orange" },
+  { title:"中国大学MOOC", desc:"国内高校精品课程", url:"https://www.icourse163.org", icon:"🏫", tags:["慕课","高校"], cat:"learn", a:"purple" },
+  { title:"W3Schools", desc:"Web 开发入门教程，在线即试", url:"https://www.w3schools.com", icon:"🌐", tags:["Web","入门"], cat:"learn", a:"green" },
+
+  // ──── 网盘资源 ──────────────────────────────
+  { title:"Zlibrary+阅读APP", desc:"夸克网盘 — 电子书阅读资源", url:"https://pan.quark.cn/s/e9fae4259281", icon:"📚", tags:["夸克"], cat:"resource", a:"orange" },
+  { title:"AI生图生视频教程库", desc:"夸克网盘 — AI绘画与视频生成教程", url:"https://pan.quark.cn/s/4fcd2YBnwI", icon:"🎨", tags:["AI","夸克"], cat:"resource", a:"purple" },
+  { title:"奈飞+影视APP", desc:"夸克网盘 — 影视 APP 合集", url:"https://pan.quark.cn/s/f573588f382d", icon:"🎬", tags:["影视","夸克"], cat:"resource", a:"orange" },
+  { title:"樱花+动漫APP", desc:"夸克网盘 — 动漫 APP 资源", url:"https://pan.quark.cn/s/7b64b8b87479", icon:"🌸", tags:["动漫","夸克"], cat:"resource", a:"pink" },
+  { title:"漫蛙+漫画APP", desc:"夸克网盘 — 漫画阅读 APP", url:"https://pan.quark.cn/s/53a0b2970c72", icon:"🐸", tags:["漫画","夸克"], cat:"resource", a:"pink" },
+  { title:"比特uT+BT下载APP", desc:"夸克网盘 — BT 下载工具", url:"https://pan.quark.cn/s/5ea4802ec7f8", icon:"⚡", tags:["BT","夸克"], cat:"resource", a:"green" },
+  { title:"天涯神贴1000篇PDF", desc:"迅雷网盘 — 天涯社区经典帖子合集", url:"https://pan.xunlei.com/s/VOSxaOjTVxQzSPYjb5eJ4GuWA1?pwd=gxtm", icon:"📜", tags:["迅雷","天涯"], cat:"resource", a:"orange" },
+  { title:"洛雪+音乐APP", desc:"夸克网盘 — 免费音乐播放器", url:"https://pan.quark.cn/s/d109ba425190", icon:"🎵", tags:["音乐","夸克"], cat:"resource", a:"blue" },
+  { title:"小说+相声听书APP", desc:"迅雷网盘 — 有声资源合集", url:"https://pan.xunlei.com/s/VOSxaOjTVxQzSPYjb5eJ4GuWA1?pwd=gxtm", icon:"🎧", tags:["听书","迅雷"], cat:"resource", a:"purple" },
+  { title:"直播+电视TV端", desc:"夸克网盘 — 电视直播 APP", url:"https://pan.quark.cn/s/bc24e7fcb554", icon:"📡", tags:["TV","夸克"], cat:"resource", a:"yellow" },
+
+  // ──── 导航大全 ──────────────────────────────
+  { title:"磁力搜索大全", desc:"磁力链接搜索引擎导航", url:"https://cilisousuodaohang.litxdh.com", icon:"🧲", tags:["磁力","搜索"], cat:"nav", a:"blue" },
+  { title:"BT下载工具", desc:"BT 下载工具与资源站导航", url:"https://btxiazai.litxdh.com/", icon:"⬇️", tags:["BT","下载"], cat:"nav", a:"green" },
+  { title:"影视资源在线看", desc:"在线影视资源网站导航", url:"https://yingshi.xxsnav.com/", icon:"🎬", tags:["影视","在线"], cat:"nav", a:"orange" },
+  { title:"日韩漫画在线看", desc:"日韩漫画阅读网站导航", url:"https://manhua.hezidh.com/", icon:"📖", tags:["漫画","日韩"], cat:"nav", a:"pink" },
+  { title:"游戏网站大全", desc:"游戏资源与平台导航", url:"https://youxi.ggonav.com/", icon:"🎮", tags:["游戏","导航"], cat:"nav", a:"green" },
+  { title:"电子书下载网站", desc:"电子书免费下载站导航", url:"https://dianzishu.wwwnav.com/", icon:"📚", tags:["电子书","下载"], cat:"nav", a:"yellow" },
+  { title:"热门资源下载", desc:"各类热门资源聚合下载", url:"https://wangpanziyuan.pages.dev/", icon:"🔥", tags:["热门","资源"], cat:"nav", a:"red" },
+];
+
+// ===================================================================
+// 分类定义
+// ===================================================================
+const CATS = [
+  { id:"all",  name:"全部", icon:"🌟" },
+  { id:"ai",   name:"AI 工具", icon:"🤖" },
+  { id:"dev",  name:"编程开发", icon:"💻" },
+  { id:"embed",name:"嵌入式硬件", icon:"🔌" },
+  { id:"anime",name:"动漫资源", icon:"🎬" },
+  { id:"search",name:"资源搜索", icon:"🔍" },
+  { id:"learn",name:"学习资源", icon:"📚" },
+  { id:"resource",name:"网盘资源", icon:"📥" },
+  { id:"nav",  name:"导航大全", icon:"🧭" },
+  { id:"favs", name:"我的收藏", icon:"⭐" },
+];
+
+// ===================================================================
+// 状态
+// ===================================================================
+let activeCat = "all";
+let query = "";
+let favorites = JSON.parse(localStorage.getItem("mynav_favs") || "[]");
+let visited = JSON.parse(localStorage.getItem("mynav_visited") || "[]");
+
+// ===================================================================
+// 渲染
+// ===================================================================
+function updateStats() {
+  const el = document.getElementById("stats-bar");
+  const total = LINKS.length;
+  const favs = favorites.length;
+  el.innerHTML = `
+    <span>📊 共 ${total} 个链接</span>
+    <span>📂 ${CATS.length-1} 个分类</span>
+    <span>⭐ ${favs} 个收藏</span>
+    <span>📝 ${visited.length} 次访问</span>
+  `;
+}
+
+function renderTabs() {
+  const container = document.getElementById("tabs");
+  container.innerHTML = CATS.map(c => {
+    const cnt = c.id==="all" ? LINKS.length :
+      c.id==="favs" ? favorites.length :
+      LINKS.filter(l => l.cat === c.id).length;
+    const isFav = c.id === "favs";
+    return `<button class="tab${c.id===activeCat?' active':''}${isFav?' tab-fav':''}"
+      data-cat="${c.id}">${c.icon} ${c.name}<span class="count">${cnt}</span></button>`;
+  }).join("");
+
+  container.querySelectorAll(".tab").forEach(t => {
+    t.addEventListener("click", () => { activeCat = t.dataset.cat; renderAll(); });
+  });
+}
+
+function renderCards() {
+  let links;
+  if (activeCat === "favs") {
+    links = LINKS.filter(l => favorites.includes(l.url));
+  } else {
+    links = LINKS.filter(l => {
+      const matchCat = activeCat === "all" || l.cat === activeCat;
+      const matchQ = !query ||
+        l.title.toLowerCase().includes(query) ||
+        l.desc.toLowerCase().includes(query) ||
+        l.tags.some(t => t.toLowerCase().includes(query));
+      return matchCat && matchQ;
+    });
+  }
+
+  const grid = document.getElementById("grid");
+  const noRes = document.getElementById("no-results");
+
+  if (links.length === 0) {
+    grid.innerHTML = "";
+    noRes.style.display = "block";
+    if (activeCat === "favs") {
+      noRes.innerHTML = '<span class="emoji">⭐</span><p>还没有收藏任何链接</p><p style="font-size:0.85rem;color:var(--text-dim)">点击卡片右上角的 ☆ 即可收藏</p>';
+    }
+    return;
+  }
+  noRes.style.display = "none";
+
+  grid.innerHTML = links.map(link => {
+    const isFav = favorites.includes(link.url);
+    const isVisited = visited.includes(link.url);
+    const accent = `a-${link.a || 'purple'}`;
+    const tagsHtml = link.tags.map(t => `<span class="tag${t==='免费'||t==='开源'?' hot':''}">${t}</span>`).join("");
+
+    return `
+    <div class="card ${accent}${isVisited?' visited':''}" data-url="${link.url}">
+      <button class="star-btn${isFav?' faved':''}" data-url="${link.url}" title="${isFav?'取消收藏':'收藏'}">
+        ${isFav ? '★' : '☆'}
+      </button>
+      <div class="card-header">
+        <div class="card-icon">${link.icon}</div>
+        <div class="card-title">${link.title}</div>
+      </div>
+      <div class="card-desc">${link.desc}</div>
+      <div class="card-tags">${tagsHtml}</div>
+    </div>`;
+  }).join("");
+
+  // 卡片点击 → 打开链接
+  grid.querySelectorAll(".card").forEach(card => {
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".star-btn")) return;
+      const url = card.dataset.url;
+      if (url && url !== "#") {
+        if (!visited.includes(url)) { visited.push(url); localStorage.setItem("mynav_visited", JSON.stringify(visited)); }
+        window.open(url, "_blank");
+        renderCards(); updateStats();
+      }
+    });
+  });
+
+  // 收藏按钮
+  grid.querySelectorAll(".star-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const url = btn.dataset.url;
+      if (favorites.includes(url)) {
+        favorites = favorites.filter(u => u !== url);
+      } else {
+        favorites.push(url);
+      }
+      localStorage.setItem("mynav_favs", JSON.stringify(favorites));
+      renderCards(); updateStats();
+    });
+  });
+}
+
+function renderAll() {
+  renderTabs();
+  renderCards();
+  updateStats();
+}
+
+// ===================================================================
+// 搜索
+// ===================================================================
+function initSearch() {
+  const input = document.getElementById("search");
+  input.addEventListener("input", () => {
+    query = input.value.trim().toLowerCase();
+    if (query && activeCat === "favs") { activeCat = "all"; }
+    renderAll();
+  });
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey||e.metaKey) && e.key==="k") { e.preventDefault(); input.focus(); input.select(); }
+    // 数字键切换分类
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && document.activeElement !== input) {
+      const num = parseInt(e.key);
+      if (num >= 1 && num <= CATS.length) { activeCat = CATS[num-1].id; renderAll(); }
+    }
+  });
+}
+
+// ===================================================================
+// 回到顶部
+// ===================================================================
+function initBackTop() {
+  const btn = document.getElementById("back-top");
+  window.addEventListener("scroll", () => btn.classList.toggle("visible", scrollY > 400));
+  btn.addEventListener("click", () => scrollTo({top:0,behavior:"smooth"}));
+}
+
+// ===================================================================
+// 启动
+// ===================================================================
+function init() {
+  initSearch();
+  initBackTop();
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>
