@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cashflow 202 — 现金流游戏</title>
+<style>
+/* ===== CSS Variables (matching nav-page theme) ===== */
+:root {
+  --bg: #0a0a14; --surface: #141428; --surface2: #1e1e3a;
+  --border: #282850; --text: #e4e4f0; --text-dim: #8080a8;
+  --primary: #7c5cfc; --primary-glow: rgba(124,92,252,0.25);
+  --green: #00d69c; --blue: #54a0ff; --orange: #ff9f43;
+  --pink: #ff6b81; --cyan: #00d2d3; --yellow: #feca57;
+  --red: #ff4757; --radius: 14px; --transition: 0.2s ease;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter','PingFang SC','Microsoft YaHei',sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% -10%, var(--primary-glow), transparent),
+    radial-gradient(ellipse 50% 30% at 85% 90%, rgba(0,210,156,0.06), transparent);
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+.container { max-width: 1400px; margin:0 auto; padding:0 20px; }
+
+/* ===== Header ===== */
+.game-header {
+  text-align:center; padding:20px 0 8px;
+}
+.game-header h1 {
+  font-size:2rem; font-weight:800; letter-spacing:-1px;
+  background:linear-gradient(135deg, var(--primary), var(--cyan));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.game-header .sub { color:var(--text-dim); font-size:0.85rem; }
+.turn-info {
+  display:flex; gap:16px; justify-content:center; flex-wrap:wrap;
+  margin-top:8px; font-size:0.8rem; color:var(--text-dim);
+}
+.turn-info span { background:var(--surface2); padding:4px 12px; border-radius:12px; }
+
+/* ===== Main Layout ===== */
+.main-layout {
+  display:grid; grid-template-columns:1fr 380px; gap:16px;
+  margin-top:12px; align-items:start;
+}
+@media(max-width:900px) { .main-layout { grid-template-columns:1fr; } }
+
+/* ===== Board ===== */
+.board-container {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:20px;
+  position:relative; min-height:520px; overflow:hidden;
+}
+.board-container h3 { text-align:center; color:var(--text-dim); font-size:0.85rem; margin-bottom:8px; }
+.board-svg { width:100%; height:480px; display:block; }
+
+/* Space tooltip */
+.space-tooltip {
+  position:absolute; background:var(--surface2); border:1px solid var(--border);
+  padding:8px 14px; border-radius:8px; font-size:0.78rem; pointer-events:none;
+  z-index:10; opacity:0; transition:opacity 0.2s; white-space:nowrap;
+  box-shadow:0 4px 16px rgba(0,0,0,0.5);
+}
+
+/* ===== Player Sheet ===== */
+.sheet {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px;
+}
+.sheet h3 { font-size:0.9rem; margin-bottom:8px; color:var(--text-dim); }
+.sheet-row { display:flex; justify-content:space-between; padding:4px 0; font-size:0.8rem; border-bottom:1px solid rgba(255,255,255,0.03); }
+.sheet-row .val { font-weight:600; }
+.sheet-row .pos { color:var(--green); }
+.sheet-row .neg { color:var(--pink); }
+.sheet-section { margin-bottom:10px; }
+.sheet-section h4 { font-size:0.75rem; color:var(--orange); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+.sheet-divider { border-top:1px dashed var(--border); margin:8px 0; }
+.summary-box {
+  background:var(--surface2); border-radius:10px; padding:10px;
+  margin-top:8px; text-align:center;
+}
+.summary-box .big-num { font-size:1.6rem; font-weight:800; }
+.summary-box .label { font-size:0.7rem; color:var(--text-dim); }
+.progress-bar {
+  height:6px; background:var(--surface2); border-radius:3px; margin-top:6px; overflow:hidden;
+}
+.progress-bar .fill {
+  height:100%; background:linear-gradient(90deg, var(--primary), var(--cyan));
+  border-radius:3px; transition:width 0.5s;
+}
+
+/* ===== Action Bar ===== */
+.action-bar {
+  display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+  margin-top:16px; padding:12px; background:var(--surface); border-radius:var(--radius);
+  border:1px solid var(--border);
+}
+.btn {
+  padding:10px 24px; border-radius:22px; border:1px solid var(--border);
+  background:var(--surface2); color:var(--text); cursor:pointer;
+  font-size:0.9rem; font-weight:600; transition:all var(--transition);
+  white-space:nowrap;
+}
+.btn:hover { border-color:var(--primary); box-shadow:0 0 16px var(--primary-glow); }
+.btn.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
+.btn.primary:hover { box-shadow:0 0 24px var(--primary-glow); }
+.btn.green { background:var(--green); color:#000; border-color:var(--green); }
+.btn.red { background:var(--red); color:#fff; border-color:var(--red); }
+.btn:disabled { opacity:0.4; cursor:not-allowed; pointer-events:none; }
+
+/* ===== Dice ===== */
+.dice-box {
+  display:flex; gap:12px; align-items:center;
+}
+.die {
+  width:52px; height:52px; background:var(--surface2); border:2px solid var(--border);
+  border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-size:1.8rem; font-weight:800; transition:transform 0.1s;
+}
+.die.rolling { animation:diceRoll 0.15s infinite; }
+@keyframes diceRoll {
+  0%{transform:rotate(0deg) scale(1)} 25%{transform:rotate(90deg) scale(1.1)}
+  50%{transform:rotate(180deg) scale(1)} 75%{transform:rotate(270deg) scale(1.1)}
+  100%{transform:rotate(360deg) scale(1)}
+}
+
+/* ===== Event Log ===== */
+.event-log {
+  max-height:120px; overflow-y:auto; margin-top:10px; font-size:0.75rem;
+  background:var(--surface2); border-radius:8px; padding:8px;
+}
+.event-log .entry { padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.03); color:var(--text-dim); }
+.event-log .entry .emoji { margin-right:4px; }
+
+/* ===== Modals ===== */
+.modal-overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);
+  z-index:100; display:flex; align-items:center; justify-content:center;
+  animation:fadeIn 0.2s;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.modal {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:24px; max-width:480px; width:90%;
+  max-height:80vh; overflow-y:auto; box-shadow:0 16px 48px rgba(0,0,0,0.6);
+  animation:slideUp 0.25s;
+}
+@keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+.modal h2 { font-size:1.2rem; margin-bottom:12px; }
+.card-detail { background:var(--surface2); border-radius:10px; padding:14px; margin:10px 0; }
+.card-detail .row { display:flex; justify-content:space-between; padding:3px 0; font-size:0.85rem; }
+.modal .actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+.modal .actions .btn { flex:1; text-align:center; }
+
+/* Career selection grid */
+.career-grid {
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px;
+}
+.career-card {
+  background:var(--surface2); border:2px solid var(--border); border-radius:12px;
+  padding:14px; cursor:pointer; transition:all var(--transition); text-align:center;
+}
+.career-card:hover { border-color:var(--primary); box-shadow:0 0 20px var(--primary-glow); transform:translateY(-2px); }
+.career-card .c-icon { font-size:2.2rem; display:block; margin-bottom:6px; }
+.career-card .c-name { font-weight:700; font-size:0.95rem; }
+.career-card .c-salary { color:var(--green); font-size:0.85rem; }
+.career-card .c-expense { color:var(--pink); font-size:0.78rem; }
+
+/* Asset list */
+.asset-item {
+  display:flex; justify-content:space-between; align-items:center;
+  background:var(--surface2); border-radius:8px; padding:8px 10px;
+  margin:4px 0; font-size:0.78rem;
+}
+.asset-item .sell-btn {
+  padding:3px 10px; border-radius:10px; border:1px solid var(--orange);
+  background:transparent; color:var(--orange); cursor:pointer; font-size:0.7rem;
+  transition:all var(--transition);
+}
+.asset-item .sell-btn:hover { background:var(--orange); color:#000; }
+
+/* Toast */
+.toast {
+  position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:200;
+  background:var(--green); color:#000; padding:10px 24px; border-radius:20px;
+  font-weight:700; font-size:0.9rem; opacity:0; transition:opacity 0.3s;
+  pointer-events:none;
+}
+.toast.show { opacity:1; }
+.toast.warn { background:var(--orange); }
+
+/* Hidden */
+.hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="game-header">
+  <h1>💰 Cashflow 202</h1>
+  <p class="sub">按空格键掷骰 · 被动收入 > 2×总支出出圈 · <a href="index.html" style="color:var(--primary);text-decoration:none;">← MyNav</a></p>
+  <div class="turn-info" id="turn-info"></div>
+</header>
+
+<div class="main-layout">
+  <!-- Board -->
+  <div class="board-container" id="board-container">
+    <h3 id="board-title">🐭 老鼠赛跑 · Rat Race</h3>
+    <svg class="board-svg" id="board-svg" viewBox="0 0 600 480"></svg>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px;font-size:0.68rem;color:var(--text-dim);">
+      <span>💰发薪</span><span>💼大买卖</span><span>🛒小生意</span><span>📊市场</span><span>🛍️支出</span><span>👶生子</span><span>📉失业</span><span>🎗️慈善</span>
+    </div>
+  </div>
+
+  <!-- Player Sheet -->
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<!-- Action Bar -->
+<div class="action-bar" id="action-bar"></div>
+
+<!-- Event Log -->
+<div class="event-log" id="event-log" style="max-width:1400px; margin:10px auto 0;"></div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================================================================
+// GAME DATA
+// ===================================================================
+
+const PROFESSIONS = [
+  { id:'doctor', name:'医生', icon:'👨‍⚕️', salary:13200, savings:400, mortgage:1900, schoolLoan:1500, carLoan:500, creditCard:300, other:2100, childExp:640 },
+  { id:'lawyer', name:'律师', icon:'⚖️', salary:11000, savings:300, mortgage:1600, schoolLoan:1300, carLoan:400, creditCard:200, other:1800, childExp:540 },
+  { id:'pilot', name:'飞行员', icon:'✈️', salary:9500, savings:400, mortgage:1400, schoolLoan:0, carLoan:600, creditCard:400, other:1500, childExp:480 },
+  { id:'engineer', name:'工程师', icon:'🔧', salary:7500, savings:300, mortgage:1100, schoolLoan:200, carLoan:300, creditCard:200, other:1200, childExp:400 },
+  { id:'teacher', name:'教师', icon:'📚', salary:4800, savings:200, mortgage:700, schoolLoan:100, carLoan:200, creditCard:150, other:800, childExp:300 },
+  { id:'nurse', name:'护士', icon:'💉', salary:5200, savings:200, mortgage:800, schoolLoan:100, carLoan:200, creditCard:100, other:900, childExp:320 },
+  { id:'mechanic', name:'机械师', icon:'🔩', salary:3500, savings:150, mortgage:400, schoolLoan:0, carLoan:150, creditCard:100, other:600, childExp:240 },
+  { id:'secretary', name:'秘书', icon:'💼', salary:2500, savings:100, mortgage:400, schoolLoan:0, carLoan:100, creditCard:50, other:550, childExp:200 },
+];
+
+const DREAMS = [
+  { name:'环游世界', icon:'🌍', cost:100000 },
+  { name:'私人游艇', icon:'🛥️', cost:80000 },
+  { name:'海边别墅', icon:'🏖️', cost:120000 },
+  { name:'创办大学', icon:'🏫', cost:150000 },
+  { name:'野生动物保护区', icon:'🦁', cost:200000 },
+  { name:'太空旅行', icon:'🚀', cost:250000 },
+];
+
+// Rat Race spaces: { type, label, icon }
+const RATRACE_SPACES = [
+  { type:'start', label:'起点', icon:'🏁', desc:'经过领取月现金流' },
+  { type:'smallDeal', label:'小生意', icon:'🛒', desc:'抽 Small Deal (≤$5000)' },
+  { type:'market', label:'市场风云', icon:'📊', desc:'市场买卖事件' },
+  { type:'doodad', label:'额外支出', icon:'🛍️', desc:'强制消费' },
+  { type:'baby', label:'生孩子', icon:'👶', desc:'孩子+1，支出增加' },
+  { type:'bigDeal', label:'大买卖', icon:'💼', desc:'抽 Big Deal ($6000+)' },
+  { type:'payday', label:'发薪日', icon:'💰', desc:'领取月现金流' },
+  { type:'smallDeal', label:'小生意', icon:'🛒', desc:'抽 Small Deal (≤$5000)' },
+  { type:'downsized', label:'失业', icon:'📉', desc:'付半月工资，停2回合' },
+  { type:'market', label:'市场风云', icon:'📊', desc:'市场买卖事件' },
+  { type:'charity', label:'慈善', icon:'🎗️', desc:'捐10%收入→下3回合双骰' },
+  { type:'doodad', label:'额外支出', icon:'🛍️', desc:'强制消费' },
+  { type:'bigDeal', label:'大买卖', icon:'💼', desc:'抽 Big Deal ($6000+)' },
+  { type:'baby', label:'生孩子', icon:'👶', desc:'孩子+1，支出增加' },
+  { type:'payday', label:'发薪日', icon:'💰', desc:'领取月现金流' },
+  { type:'smallDeal', label:'小生意', icon:'🛒', desc:'抽 Small Deal (≤$5000)' },
+  { type:'market', label:'市场风云', icon:'📊', desc:'市场买卖事件' },
+  { type:'doodad', label:'额外支出', icon:'🛍️', desc:'强制消费' },
+  { type:'bigDeal', label:'大买卖', icon:'💼', desc:'抽 Big Deal ($6000+)' },
+  { type:'downsized', label:'失业', icon:'📉', desc:'付半月工资，停2回合' },
+  { type:'smallDeal', label:'小生意', icon:'🛒', desc:'抽 Small Deal (≤$5000)' },
+  { type:'market', label:'市场风云', icon:'📊', desc:'市场买卖事件' },
+  { type:'bigDeal', label:'大买卖', icon:'💼', desc:'抽 Big Deal ($6000+)' },
+  { type:'doodad', label:'额外支出', icon:'🛍️', desc:'强制消费' },
+];
+
+// Small Deals (cost ≤ $5000)
+const SMALL_DEALS = [
+  { name:'MYT4U 科技股', type:'stock', symbol:'MYT4U', cost:3000, shares:100, priceRange:[10,30], cashflow:0, desc:'100股 MYT4U，$10-30/股' },
+  { name:'2BIG 电子股', type:'stock', symbol:'2BIG', cost:1000, shares:100, priceRange:[5,15], cashflow:0, desc:'100股 2BIG，$5-15/股' },
+  { name:'OK4U 医药股', type:'stock', symbol:'OK4U', cost:2000, shares:100, priceRange:[10,20], cashflow:0, desc:'100股 OK4U，$10-20/股' },
+  { name:'小型出租房', type:'realestate', cost:5000, downPayment:4000, cashflow:250, desc:'3室2卫出租房，首付$4000，月现金流+$250' },
+  { name:'复式公寓', type:'realestate', cost:4500, downPayment:3500, cashflow:200, desc:'2室1卫复式，首付$3500，月现金流+$200' },
+  { name:'金币投资', type:'commodity', cost:2000, cashflow:0, desc:'10枚金币，$200/枚，待市场出售' },
+  { name:'MYT4U 优先股', type:'stock', symbol:'MYT4U', cost:1500, shares:50, priceRange:[10,30], cashflow:0, desc:'50股 MYT4U，$10-30/股' },
+  { name:'车库改造房', type:'realestate', cost:3000, downPayment:2000, cashflow:120, desc:'改造车库出租，首付$2000，月现金流+$120' },
+  { name:'国债', type:'bond', cost:1000, cashflow:50, desc:'$1000国债，年息6%，月现金流+$50' },
+  { name:'银币收藏', type:'commodity', cost:1500, cashflow:0, desc:'50枚银币，$30/枚，待市场出售' },
+];
+
+// Big Deals (cost ≥ $6000)
+const BIG_DEALS = [
+  { name:'12单元公寓楼', type:'realestate', cost:60000, downPayment:20000, cashflow:800, desc:'12单元公寓，首付$20k，月现金流+$800' },
+  { name:'自助洗衣店', type:'business', cost:30000, downPayment:15000, cashflow:500, desc:'24h自助洗衣，首付$15k，月现金流+$500' },
+  { name:'8单元公寓', type:'realestate', cost:45000, downPayment:15000, cashflow:550, desc:'8单元公寓楼，首付$15k，月现金流+$550' },
+  { name:'便利店', type:'business', cost:25000, downPayment:12000, cashflow:450, desc:'社区便利店，首付$12k，月现金流+$450' },
+  { name:'有限合伙LP-A', type:'lp', cost:2000, sharePrice:2000, cashflow:100, desc:'LP份额，$2000/份，月现金流+$100/份' },
+  { name:'24单元公寓', type:'realestate', cost:120000, downPayment:40000, cashflow:1600, desc:'24单元大公寓，首付$40k，月现金流+$1600' },
+  { name:'汽车修理店', type:'business', cost:35000, downPayment:18000, cashflow:600, desc:'汽车修理连锁，首付$18k，月现金流+$600' },
+  { name:'有限合伙LP-B', type:'lp', cost:4000, sharePrice:4000, cashflow:250, desc:'LP份额，$4000/份，月现金流+$250/份' },
+  { name:'购物中心商铺', type:'realestate', cost:80000, downPayment:30000, cashflow:1200, desc:'购物中心3间商铺，首付$30k，月现金流+$1200' },
+  { name:'小型旅馆', type:'business', cost:50000, downPayment:25000, cashflow:900, desc:'20间客房旅馆，首付$25k，月现金流+$900' },
+  { name:'办公楼', type:'realestate', cost:100000, downPayment:35000, cashflow:1400, desc:'小办公楼，首付$35k，月现金流+$1400' },
+  { name:'餐饮连锁', type:'business', cost:40000, downPayment:20000, cashflow:700, desc:'快餐连锁店，首付$20k，月现金流+$700' },
+];
+
+// Market Cards
+const MARKET_CARDS = [
+  { text:'MYT4U股价暴涨！', effect:'stockUp', symbol:'MYT4U', price:40, desc:'MYT4U $40/股，所有持有者可按此价卖出' },
+  { text:'MYT4U股价暴跌…', effect:'stockDown', symbol:'MYT4U', price:5, desc:'MYT4U跌至$5/股' },
+  { text:'2BIG新产品热销！', effect:'stockUp', symbol:'2BIG', price:25, desc:'2BIG $25/股，所有持有者可按此价卖出' },
+  { text:'2BIG被调查', effect:'stockDown', symbol:'2BIG', price:3, desc:'2BIG跌至$3/股' },
+  { text:'OK4U新药获批！', effect:'stockUp', symbol:'OK4U', price:35, desc:'OK4U $35/股，所有持有者可按此价卖出' },
+  { text:'OK4U临床试验失败', effect:'stockDown', symbol:'OK4U', price:8, desc:'OK4U跌至$8/股' },
+  { text:'房地产市场火热！', effect:'realEstateUp', desc:'所有出租房月现金流×1.5（找银行要钱）' },
+  { text:'房市崩盘', effect:'realEstateDown', desc:'所有出租房月现金流减半' },
+  { text:'金币升值！', effect:'goldUp', desc:'金币升至$400/枚，可按此价卖出' },
+  { text:'银币需求暴增', effect:'silverUp', desc:'银币升至$60/枚，可按此价卖出' },
+  { text:'银行降息', effect:'interestDown', desc:'银行贷款利率降至5%（月付$50/$1000）' },
+  { text:'银行加息', effect:'interestUp', desc:'银行贷款利率升至15%（月付$150/$1000）' },
+  { text:'MYT4U 分红！', effect:'dividend', symbol:'MYT4U', amount:5, desc:'MYT4U 每股分红$5' },
+  { text:'2BIG 分红！', effect:'dividend', symbol:'2BIG', amount:3, desc:'2BIG 每股分红$3' },
+  { text:'收到礼物！', effect:'gift', amount:2000, desc:'远房亲戚留给你$2000遗产' },
+];
+
+// Doodads
+const DOODADS = [
+  { name:'电视坏了', cost:800, icon:'📺' },
+  { name:'洗衣机维修', cost:400, icon:'🔧' },
+  { name:'牙齿根管治疗', cost:1200, icon:'🦷' },
+  { name:'汽车大修', cost:1500, icon:'🚗' },
+  { name:'屋顶漏水维修', cost:2500, icon:'🏠' },
+  { name:'朋友婚礼红包', cost:600, icon:'💒' },
+  { name:'水管爆裂', cost:1000, icon:'🚿' },
+  { name:'空调更换', cost:3000, icon:'❄️' },
+  { name:'宠物看病', cost:500, icon:'🐱' },
+  { name:'手机摔碎', cost:900, icon:'📱' },
+];
+
+// Fast Track businesses
+const FASTTRACK_BIZ = [
+  { name:'连锁酒店', cost:100000, cashflow:8000, icon:'🏨' },
+  { name:'软件开发公司', cost:80000, cashflow:6000, icon:'💻' },
+  { name:'物流中心', cost:120000, cashflow:10000, icon:'🚚' },
+  { name:'私立学校', cost:150000, cashflow:12000, icon:'🏫' },
+  { name:'医疗中心', cost:200000, cashflow:16000, icon:'🏥' },
+  { name:'购物中心', cost:180000, cashflow:14000, icon:'🏬' },
+  { name:'风投基金', cost:60000, cashflow:5000, icon:'📈' },
+  { name:'新能源电站', cost:250000, cashflow:20000, icon:'⚡' },
+];
+
+// ===================================================================
+// GAME STATE
+// ===================================================================
+
+let G = null; // current game state
+let _noSave = false; // prevent save on intentional reset
+
+function initPlayer(prof) {
+  return {
+    name: '你',
+    profession: prof.id,
+    cash: prof.savings + prof.salary, // starting cash = savings + 1 month salary
+    income: { salary: prof.salary, interest:0, dividend:0, realEstate:0, business:0 },
+    expenses: { tax: Math.round(prof.salary*0.25), mortgage:prof.mortgage, schoolLoan:prof.schoolLoan, carLoan:prof.carLoan, creditCard:prof.creditCard, other:prof.other, bankLoan:0, children:0 },
+    assets: [],
+    liabilities: [],
+    children: 0,
+    bankLoanUnits: 0,
+    position: 0,
+    track: 'ratrace',
+    turnsSkipped: 0,
+    charityActive: 0,
+    dream: null,
+    shortPositions: [], // 202: { symbol, shares, priceSold }
+    optionContracts: [], // 202: { symbol, type:'call'|'put', strike, premium, shares }
+    startingPortfolio: [], // 202
+  };
+}
+
+function createGame(profId, dreamId) {
+  const prof = PROFESSIONS.find(p => p.id === profId);
+  const dream = DREAMS[dreamId];
+  const p = initPlayer(prof);
+  p.dream = dream;
+
+  // Shuffle decks
+  const shuffle = arr => { for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; };
+
+  return {
+    phase: 'ratrace',
+    player: p,
+    profession: prof,
+    turn: 0,
+    dice: [1,1],
+    smallDeals: shuffle([...SMALL_DEALS]),
+    bigDeals: shuffle([...BIG_DEALS]),
+    marketCards: shuffle([...MARKET_CARDS]),
+    doodads: shuffle([...DOODADS]),
+    marketDrawn: 0,
+    eventLog: [],
+    currentModal: null,
+    waitingForAction: false,
+    fastTrackBiz: shuffle([...FASTTRACK_BIZ]),
+    fastTrackPos: 0,
+    lastPaydayPassed: false,
+  };
+}
+
+function saveGame() {
+  try { localStorage.setItem('cashflow202_save', JSON.stringify(G)); return true; }
+  catch(e) { return false; }
+}
+
+function loadGame() {
+  try {
+    const data = localStorage.getItem('cashflow202_save');
+    return data ? JSON.parse(data) : null;
+  } catch(e) { return null; }
+}
+
+// ===================================================================
+// COMPUTED VALUES
+// ===================================================================
+
+function totalIncome(p) {
+  if (!p) return 0;
+  return (p.income.salary||0) + (p.income.interest||0) + (p.income.dividend||0) + (p.income.realEstate||0) + (p.income.business||0);
+}
+
+function totalExpenses(p) {
+  if (!p) return 0;
+  const e = p.expenses;
+  return (e.tax||0) + (e.mortgage||0) + (e.schoolLoan||0) + (e.carLoan||0) + (e.creditCard||0) + (e.other||0) + (e.bankLoan||0) + (e.children||0);
+}
+
+function monthlyCashflow(p) { return totalIncome(p) - totalExpenses(p); }
+
+function passiveIncome(p) {
+  if (!p) return 0;
+  return (p.income.interest||0) + (p.income.dividend||0) + (p.income.realEstate||0) + (p.income.business||0);
+}
+
+function netWorth(p) {
+  if (!p) return 0;
+  let nw = p.cash;
+  for (const a of p.assets) nw += (a.cost || 0);
+  for (const l of p.liabilities) nw -= (l.amount || 0);
+  nw -= p.bankLoanUnits * 1000;
+  return nw;
+}
+
+function canEscapeRatRace(p) {
+  // Cashflow 202: passive income > 2x total expenses
+  return passiveIncome(p) > totalExpenses(p) * 2;
+}
+
+// ===================================================================
+// GAME ACTIONS
+// ===================================================================
+
+function logEvent(emoji, text) {
+  G.eventLog.unshift({ emoji, text, turn: G.turn });
+  if (G.eventLog.length > 200) G.eventLog.length = 200;
+}
+
+function recalcFinances() {
+  const p = G.player;
+  // Reset variable income
+  p.income.realEstate = 0;
+  p.income.business = 0;
+  p.income.dividend = 0;
+  p.income.interest = 0;
+  // Recalculate from assets
+  for (const a of p.assets) {
+    if (a.type === 'realestate') p.income.realEstate += (a.cashflow || 0);
+    else if (a.type === 'business') p.income.business += (a.cashflow || 0);
+    else if (a.type === 'lp') p.income.business += (a.cashflow || 0) * (a.shares || 1);
+    else if (a.type === 'bond') p.income.interest += (a.cashflow || 0);
+  }
+  p.expenses.bankLoan = p.bankLoanUnits * 100; // 10% monthly per $1000 unit
+  p.expenses.children = p.children * (G.profession.childExp || 300);
+  // Tax is based on salary
+  p.expenses.tax = Math.round(p.income.salary * 0.25);
+}
+
+function rollDice(count=1) {
+  const dice = [];
+  for (let i=0;i<count;i++) dice.push(Math.floor(Math.random()*6)+1);
+  return dice;
+}
+
+function movePlayer(steps) {
+  const p = G.player;
+  const totalSpaces = RATRACE_SPACES.length;
+  const oldPos = p.position;
+  p.position = (p.position + steps) % totalSpaces;
+  // Check if passed start
+  if (oldPos + steps >= totalSpaces) {
+    p.cash += monthlyCashflow(p);
+    logEvent('🏁', `经过起点，领取月现金流 $${monthlyCashflow(p).toLocaleString()}`);
+  }
+  return p.position;
+}
+
+function drawCard(deck) {
+  if (deck.length === 0) return null;
+  return deck.pop();
+}
+
+function shuffleDeck(arr) {
+  for (let i=arr.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]; }
+  return arr;
+}
+
+function reshuffleMarketIfNeeded() {
+  if (G.marketDrawn >= 25) {
+    G.marketCards = shuffleDeck([...MARKET_CARDS]);
+    G.marketDrawn = 0;
+    logEvent('🔄', '市场卡牌堆已重新洗牌（202规则：每25张重洗）');
+  }
+}
+
+function handleSpace(spaceType) {
+  const p = G.player;
+  switch(spaceType) {
+    case 'start':
+      // Already handled in movePlayer (passing start)
+      // If landed exactly on start:
+      p.cash += monthlyCashflow(p);
+      logEvent('🏁', `停在起点，领取月现金流 $${monthlyCashflow(p).toLocaleString()}`);
+      break;
+    case 'payday':
+      p.cash += monthlyCashflow(p);
+      logEvent('💰', `发薪日！领取月现金流 $${monthlyCashflow(p).toLocaleString()}`);
+      break;
+    case 'smallDeal':
+      showDealModal('small');
+      G.waitingForAction = true;
+      return;
+    case 'bigDeal':
+      showDealModal('big');
+      G.waitingForAction = true;
+      return;
+    case 'market':
+      reshuffleMarketIfNeeded();
+      showMarketModal();
+      G.waitingForAction = true;
+      return;
+    case 'doodad':
+      showDoodadModal();
+      G.waitingForAction = true;
+      return;
+    case 'baby':
+      if (p.children < 3) {
+        p.children++;
+        recalcFinances();
+        logEvent('👶', `生了第${p.children}个孩子！月支出增加 $${G.profession.childExp}`);
+      } else {
+        logEvent('👶', '已经有3个孩子了，这次没有新增。');
+      }
+      break;
+    case 'downsized':
+      const penalty = Math.round(p.income.salary / 2);
+      p.cash -= penalty;
+      p.turnsSkipped = 2;
+      logEvent('📉', `失业！付半月工资 $${penalty.toLocaleString()}，接下来2回合不能行动`);
+      break;
+    case 'charity':
+      showCharityModal();
+      G.waitingForAction = true;
+      return;
+  }
+}
+
+// ===================================================================
+// MODALS
+// ===================================================================
+
+function showModal(html) {
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal">${html}</div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+}
+
+function closeModal() {
+  const m = document.getElementById('modal-overlay');
+  if (m) m.remove();
+  G.waitingForAction = false;
+  renderAll();
+}
+
+function showDealModal(dealType) {
+  const p = G.player;
+  const deck = dealType === 'small' ? G.smallDeals : G.bigDeals;
+  const card = drawCard(deck);
+  if (!card) { logEvent('📭', '没有更多机会卡了！'); renderAll(); return; }
+
+  // 202 rule: when landing on opportunity, also draw a market card
+  reshuffleMarketIfNeeded();
+  const mCard = G.marketCards.pop();
+  G.marketDrawn++;
+
+  let marketHtml = '';
+  if (mCard) {
+    marketHtml = `<div class="card-detail" style="border-left:3px solid var(--orange);">
+      <div style="color:var(--orange);font-size:0.75rem;">📊 同时触发市场事件</div>
+      <div style="font-weight:600;">${mCard.text}</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);">${mCard.desc}</div>
+    </div>`;
+    // Process market card
+    processMarketCard(mCard);
+  }
+
+  const canAfford = p.cash >= (card.downPayment || card.cost);
+
+  let actionHtml = '';
+  if (card.type === 'stock' && canAfford) {
+    actionHtml = `<button class="btn primary" onclick="buyStock(${JSON.stringify(card).replace(/"/g,'&quot;')})">🛒 买入 (${card.shares}股 × $${card.cost/card.shares}/股 = $${card.cost.toLocaleString()})</button>`;
+  } else if (card.type === 'realestate' && canAfford) {
+    actionHtml = `<button class="btn primary" onclick="buyRealEstate(${JSON.stringify(card).replace(/"/g,'&quot;')})">🏠 买入 (首付$${card.downPayment.toLocaleString()})</button>`;
+  } else if (card.type === 'business' && canAfford) {
+    actionHtml = `<button class="btn primary" onclick="buyBusiness(${JSON.stringify(card).replace(/"/g,'&quot;')})">🏢 买入 (首付$${card.downPayment.toLocaleString()})</button>`;
+  } else if (card.type === 'lp' && canAfford) {
+    actionHtml = `<button class="btn primary" onclick="buyLP(${JSON.stringify(card).replace(/"/g,'&quot;')})">📈 买入 ($${card.sharePrice.toLocaleString()}/份)</button>`;
+  } else if (card.type === 'commodity' || card.type === 'bond') {
+    if (canAfford) {
+      actionHtml = `<button class="btn primary" onclick="buyAsset(${JSON.stringify(card).replace(/"/g,'&quot;')})">🛒 买入 ($${card.cost.toLocaleString()})</button>`;
+    }
+  }
+
+  if (!canAfford) {
+    actionHtml = `<div style="color:var(--pink);font-size:0.85rem;">💸 现金不足！需要 $${(card.downPayment||card.cost).toLocaleString()}，你有 $${p.cash.toLocaleString()}</div>
+    <button class="btn" onclick="borrowAndBuy(${JSON.stringify(card).replace(/"/g,'&quot;')})">🏦 银行贷款购买</button>`;
+  }
+
+  showModal(`
+    <h2>${dealType==='small'?'🛒 小生意':'💼 大买卖'}</h2>
+    <div class="card-detail">
+      <div style="font-weight:700;font-size:1.1rem;">${card.name}</div>
+      <div style="font-size:0.85rem;color:var(--text-dim);margin-top:4px;">${card.desc}</div>
+      ${card.cashflow ? `<div class="row"><span>月现金流</span><span style="color:var(--green)">+$${card.cashflow.toLocaleString()}</span></div>` : ''}
+      ${card.downPayment ? `<div class="row"><span>首付</span><span>$${card.downPayment.toLocaleString()}</span></div>` : ''}
+      ${card.cost && !card.downPayment ? `<div class="row"><span>价格</span><span>$${card.cost.toLocaleString()}</span></div>` : ''}
+      <div class="row"><span>你的现金</span><span>$${p.cash.toLocaleString()}</span></div>
+    </div>
+    ${marketHtml}
+    <div class="actions">
+      ${actionHtml}
+      <button class="btn" onclick="closeModal()">❌ 放弃</button>
+    </div>
+  `);
+}
+
+function showMarketModal() {
+  reshuffleMarketIfNeeded();
+  const card = G.marketCards.pop();
+  G.marketDrawn++;
+  if (!card) { logEvent('📭', '市场卡抽完了！'); renderAll(); return; }
+
+  processMarketCard(card);
+
+  showModal(`
+    <h2>📊 市场风云</h2>
+    <div class="card-detail">
+      <div style="font-weight:700;font-size:1.1rem;">${card.text}</div>
+      <div style="font-size:0.85rem;color:var(--text-dim);margin-top:6px;">${card.desc}</div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" onclick="closeModal()">✓ 知道了</button>
+    </div>
+  `);
+}
+
+function showDoodadModal() {
+  const card = G.doodads.pop();
+  if (!card) { G.doodads = shuffleDeck([...DOODADS]); return showDoodadModal(); }
+  G.player.cash -= card.cost;
+  logEvent('🛍️', `额外支出：${card.name}，花费 $${card.cost.toLocaleString()}`);
+
+  showModal(`
+    <h2>🛍️ 额外支出</h2>
+    <div class="card-detail" style="text-align:center;">
+      <div style="font-size:3rem;">${card.icon}</div>
+      <div style="font-weight:700;font-size:1.1rem;">${card.name}</div>
+      <div style="color:var(--pink);font-size:1.2rem;">-$${card.cost.toLocaleString()}</div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" onclick="closeModal()">💸 付款</button>
+      <button class="btn" onclick="borrowMoney(${card.cost});closeModal();">🏦 银行贷款支付</button>
+    </div>
+  `);
+}
+
+function showCharityModal() {
+  const p = G.player;
+  const cost = Math.round(p.income.salary * 0.1);
+  showModal(`
+    <h2>🎗️ 慈善机会</h2>
+    <div class="card-detail">
+      <div style="text-align:center;font-size:2rem;">🎗️</div>
+      <p style="text-align:center;">捐赠 10% 收入 = <strong>$${cost.toLocaleString()}</strong></p>
+      <p style="text-align:center;font-size:0.8rem;color:var(--text-dim);">接下来3回合可以使用3个骰子</p>
+    </div>
+    <div class="actions">
+      <button class="btn primary" onclick="doCharity(${cost})">✨ 捐赠</button>
+      <button class="btn" onclick="closeModal()">❌ 跳过</button>
+    </div>
+  `);
+}
+
+function showBorrowModal() {
+  const p = G.player;
+  showModal(`
+    <h2>🏦 银行贷款</h2>
+    <div class="card-detail">
+      <div class="row"><span>每份$1000</span><span>月息10% ($100/月)</span></div>
+      <div class="row"><span>当前贷款</span><span>$${(p.bankLoanUnits*1000).toLocaleString()}</span></div>
+      <div class="row"><span>月付利息</span><span style="color:var(--pink)">$${p.bankLoanUnits*100}</span></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <input type="number" id="borrow-amount" value="1" min="1" max="100" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">
+      <span style="align-self:center;color:var(--text-dim);">份 ($1000/份)</span>
+    </div>
+    <div class="actions">
+      <button class="btn primary" onclick="doBorrow()">✅ 确认借款</button>
+      <button class="btn" onclick="closeModal()">取消</button>
+    </div>
+  `);
+}
+
+// ===================================================================
+// CARD PROCESSORS
+// ===================================================================
+
+function processMarketCard(card) {
+  const p = G.player;
+  switch(card.effect) {
+    case 'stockUp':
+      // Sell all holdings of this stock at the price
+      const upAssets = p.assets.filter(a => a.symbol === card.symbol && a.type === 'stock');
+      for (const a of upAssets) {
+        const sellValue = a.shares * card.price;
+        p.cash += sellValue;
+        logEvent('📈', `${card.symbol} 售出 ${a.shares}股 @$${card.price} = +$${sellValue.toLocaleString()}`);
+      }
+      p.assets = p.assets.filter(a => !(a.symbol === card.symbol && a.type === 'stock'));
+      // 202: Check short positions
+      if (p.shortPositions && p.shortPositions.length) {
+        const sp = p.shortPositions.filter(s => s.symbol === card.symbol);
+        for (const s of sp) {
+          const loss = s.shares * (s.priceSold - card.price);
+          p.cash -= loss;
+          logEvent('📉', `做空 ${s.symbol} 亏损！买入平仓，损失 $${loss.toLocaleString()}`);
+        }
+        p.shortPositions = p.shortPositions.filter(s => s.symbol !== card.symbol);
+      }
+      break;
+    case 'stockDown':
+      // 202: Short sellers profit
+      if (p.shortPositions && p.shortPositions.length) {
+        const sp = p.shortPositions.filter(s => s.symbol === card.symbol);
+        for (const s of sp) {
+          const profit = s.shares * (s.priceSold - card.price);
+          p.cash += profit;
+          logEvent('📈', `做空 ${s.symbol} 盈利！${s.shares}股，利润 $${profit.toLocaleString()}`);
+        }
+        p.shortPositions = p.shortPositions.filter(s => s.symbol !== card.symbol);
+      }
+      // Stock value drops (just informational unless selling)
+      logEvent('📉', `${card.symbol} 跌至 $${card.price}/股`);
+      break;
+    case 'realEstateUp':
+      for (const a of p.assets) {
+        if (a.type === 'realestate') {
+          a.cashflow = Math.round(a.cashflow * 1.5);
+        }
+      }
+      recalcFinances();
+      logEvent('🏠', '房地产市场火热！所有房产月现金流×1.5');
+      break;
+    case 'realEstateDown':
+      for (const a of p.assets) {
+        if (a.type === 'realestate') {
+          a.cashflow = Math.round(a.cashflow * 0.5);
+        }
+      }
+      recalcFinances();
+      logEvent('📉', '房市崩盘！所有房产月现金流减半');
+      break;
+    case 'goldUp':
+      const goldAssets = p.assets.filter(a => a.type === 'commodity' && a.name.includes('金币'));
+      for (const a of goldAssets) {
+        p.cash += 4000; // 10 coins × $400
+        logEvent('🥇', `金币售出：10枚 × $400 = +$4,000`);
+      }
+      p.assets = p.assets.filter(a => !(a.type === 'commodity' && a.name.includes('金币')));
+      break;
+    case 'silverUp':
+      const silverAssets = p.assets.filter(a => a.type === 'commodity' && a.name.includes('银币'));
+      for (const a of silverAssets) {
+        p.cash += 3000; // 50 coins × $60
+        logEvent('🥈', `银币售出：50枚 × $60 = +$3,000`);
+      }
+      p.assets = p.assets.filter(a => !(a.type === 'commodity' && a.name.includes('银币')));
+      break;
+    case 'interestDown':
+      p.bankLoanUnitsOld = p.bankLoanUnits;
+      p.expenses.bankLoan = p.bankLoanUnits * 50;
+      logEvent('📊', '银行降息！贷款利率降至5%');
+      break;
+    case 'interestUp':
+      p.expenses.bankLoan = p.bankLoanUnits * 150;
+      logEvent('📊', '银行加息！贷款利率升至15%');
+      break;
+    case 'dividend':
+      const divAssets = p.assets.filter(a => a.symbol === card.symbol && a.type === 'stock');
+      for (const a of divAssets) {
+        const div = a.shares * card.amount;
+        p.cash += div;
+        logEvent('💵', `${card.symbol} 分红：${a.shares}股 × $${card.amount} = +$${div.toLocaleString()}`);
+      }
+      break;
+    case 'gift':
+      p.cash += card.amount;
+      logEvent('🎁', `收到礼物：+$${card.amount.toLocaleString()}`);
+      break;
+  }
+  recalcFinances();
+}
+
+function buyStock(card) {
+  const p = G.player;
+  if (p.cash < card.cost) return;
+  p.cash -= card.cost;
+  p.assets.push({ ...card, id: Date.now() });
+  logEvent('📈', `买入 ${card.name}，$${card.cost.toLocaleString()}`);
+  closeModal();
+}
+
+function buyRealEstate(card) {
+  const p = G.player;
+  if (p.cash < card.downPayment) return;
+  p.cash -= card.downPayment;
+  p.liabilities.push({ name: card.name+'贷款', amount: card.cost - card.downPayment, monthlyPayment: 0 });
+  p.assets.push({ ...card, id: Date.now() });
+  logEvent('🏠', `买入 ${card.name}，首付$${card.downPayment.toLocaleString()}，月现金流+$${card.cashflow}`);
+  recalcFinances();
+  closeModal();
+}
+
+function buyBusiness(card) {
+  const p = G.player;
+  if (p.cash < card.downPayment) return;
+  p.cash -= card.downPayment;
+  p.liabilities.push({ name: card.name+'贷款', amount: card.cost - card.downPayment, monthlyPayment: 0 });
+  p.assets.push({ ...card, id: Date.now() });
+  logEvent('🏢', `买入 ${card.name}，首付$${card.downPayment.toLocaleString()}，月现金流+$${card.cashflow}`);
+  recalcFinances();
+  closeModal();
+}
+
+function buyLP(card) {
+  const p = G.player;
+  if (p.cash < card.sharePrice) return;
+  p.cash -= card.sharePrice;
+  const existing = p.assets.find(a => a.name === card.name);
+  if (existing) {
+    existing.shares = (existing.shares || 1) + 1;
+    existing.cost += card.sharePrice;
+  } else {
+    p.assets.push({ ...card, id: Date.now(), shares: 1, cost: card.sharePrice });
+  }
+  logEvent('📈', `买入 ${card.name} 1份，$${card.sharePrice.toLocaleString()}`);
+  recalcFinances();
+  closeModal();
+}
+
+function buyAsset(card) {
+  const p = G.player;
+  if (p.cash < card.cost) return;
+  p.cash -= card.cost;
+  p.assets.push({ ...card, id: Date.now() });
+  logEvent('🛒', `买入 ${card.name}，$${card.cost.toLocaleString()}`);
+  recalcFinances();
+  closeModal();
+}
+
+function borrowAndBuy(card) {
+  const p = G.player;
+  const need = (card.downPayment || card.cost) - p.cash;
+  const units = Math.ceil(need / 1000);
+  p.bankLoanUnits += units;
+  p.cash += units * 1000;
+  logEvent('🏦', `银行贷款 $${(units*1000).toLocaleString()}（共$${(p.bankLoanUnits*1000).toLocaleString()}）`);
+  recalcFinances();
+  // Now try to buy
+  closeModal();
+  if (card.type === 'stock') buyStock(card);
+  else if (card.type === 'realestate') buyRealEstate(card);
+  else if (card.type === 'business') buyBusiness(card);
+  else if (card.type === 'lp') buyLP(card);
+  else buyAsset(card);
+}
+
+function borrowMoney(amount) {
+  const p = G.player;
+  const units = Math.ceil(amount / 1000);
+  p.bankLoanUnits += units;
+  p.cash += units * 1000;
+  logEvent('🏦', `银行贷款 $${(units*1000).toLocaleString()}（共$${(p.bankLoanUnits*1000).toLocaleString()}）`);
+  recalcFinances();
+}
+
+function doBorrow() {
+  const amount = parseInt(document.getElementById('borrow-amount').value) || 1;
+  G.player.bankLoanUnits += amount;
+  G.player.cash += amount * 1000;
+  logEvent('🏦', `银行贷款 $${(amount*1000).toLocaleString()}（共$${(G.player.bankLoanUnits*1000).toLocaleString()}）`);
+  recalcFinances();
+  closeModal();
+}
+
+function doCharity(cost) {
+  const p = G.player;
+  if (p.cash >= cost) {
+    p.cash -= cost;
+    p.charityActive = 3;
+    logEvent('🎗️', `慈善捐赠 $${cost.toLocaleString()}，接下来3回合可用2个骰子！`);
+  }
+  closeModal();
+}
+
+// 202 Feature: Short Selling
+function doShortSell(symbol, shares, price) {
+  const p = G.player;
+  p.cash += shares * price; // Receive money from short sale
+  p.shortPositions.push({ symbol, shares, priceSold: price });
+  logEvent('🔻', `做空 ${symbol}：卖出 ${shares}股 @$${price}，收到 $${(shares*price).toLocaleString()}（等待低价买回）`);
+  recalcFinances();
+  closeModal();
+}
+
+function sellAsset(assetId) {
+  const p = G.player;
+  const idx = p.assets.findIndex(a => a.id === assetId);
+  if (idx < 0) return;
+  const a = p.assets[idx];
+  const sellPrice = Math.round(a.cost * 0.8); // 80% of original cost
+  p.cash += sellPrice;
+  p.assets.splice(idx, 1);
+  // Remove associated liability
+  p.liabilities = p.liabilities.filter(l => !l.name.includes(a.name));
+  logEvent('💸', `卖出 ${a.name}，回收 $${sellPrice.toLocaleString()}`);
+  recalcFinances();
+  renderAll();
+}
+
+function repayLoan() {
+  const p = G.player;
+  if (p.bankLoanUnits <= 0) return;
+  if (p.cash < 1000) { showToast('现金不足 $1000 还贷', 'warn'); return; }
+  p.bankLoanUnits--;
+  p.cash -= 1000;
+  logEvent('🏦', `偿还银行贷款 $1000（剩余 $${(p.bankLoanUnits*1000).toLocaleString()}）`);
+  recalcFinances();
+  renderAll();
+}
+
+// Fast Track
+function enterFastTrack() {
+  const p = G.player;
+  p.track = 'fasttrack';
+  G.fastTrackPos = 0;
+  // Buyout = 100 × passive income
+  const buyout = passiveIncome(p) * 100;
+  p.cash += buyout;
+  logEvent('🚀', `🎉 跳出老鼠赛跑！进入快车道！买断资金 = $${buyout.toLocaleString()}`);
+  document.getElementById('board-title').textContent = '🚀 快车道 · Fast Track';
+  recalcFinances();
+  renderAll();
+}
+
+function processFastTrackSpace(pos) {
+  const p = G.player;
+  const bizCount = FASTTRACK_BIZ.length;
+  // Simplified fast track: every 3 spaces is a business, every 7 is cashflow day, every 5 is a risk
+  if (pos % 7 === 0) {
+    // Cashflow Day
+    p.cash += passiveIncome(p);
+    logEvent('💵', `现金流日！领取 $${passiveIncome(p).toLocaleString()}`);
+  } else if (pos % 3 === 0 && G.fastTrackBiz.length > 0) {
+    // Business opportunity
+    showFastTrackBizModal();
+    G.waitingForAction = true;
+    return;
+  } else if (pos % 5 === 0) {
+    // Risk
+    const risks = [
+      { text:'税务审计', cost: Math.round(p.cash * 0.5), icon:'📋' },
+      { text:'离婚', cost: p.cash, icon:'💔' },
+      { text:'诉讼', cost: Math.round(p.cash * 0.5), icon:'⚖️' },
+    ];
+    const risk = risks[Math.floor(Math.random() * risks.length)];
+    p.cash -= risk.cost;
+    logEvent(risk.icon, `${risk.text}：损失 $${risk.cost.toLocaleString()}`);
+  }
+  // Check for dream
+  if (p.dream && pos % 11 === 0 && p.cash >= p.dream.cost) {
+    p.cash -= p.dream.cost;
+    G.phase = 'won';
+    logEvent('🌟', `🏆 实现梦想「${p.dream.name}」！你赢了！`);
+  }
+  // Check $50k monthly income win
+  if (passiveIncome(p) >= 50000) {
+    G.phase = 'won';
+    logEvent('🏆', `💰 快车道月现金流达到 $${passiveIncome(p).toLocaleString()}！财务自由达成！`);
+  }
+}
+
+function showFastTrackBizModal() {
+  const p = G.player;
+  const biz = G.fastTrackBiz.pop();
+  if (!biz) { closeModal(); return; }
+
+  const existing = p.assets.find(a => a.name === biz.name);
+  const canBuy = p.cash >= biz.cost;
+
+  let actionHtml = '';
+  if (existing) {
+    // Franchise opportunity
+    actionHtml = `<div style="color:var(--yellow);">🔁 特许经营机会！已拥有「${biz.name}」</div>
+      <button class="btn primary" onclick="franchiseBiz('${biz.name}', ${biz.cost}, ${biz.cashflow})" ${!canBuy?'disabled':''}>
+        🏪 特许经营 (再付$${biz.cost.toLocaleString()})
+      </button>`;
+  } else if (canBuy) {
+    actionHtml = `<button class="btn primary" onclick="buyFastTrackBiz('${biz.name}', ${biz.cost}, ${biz.cashflow})">
+      🏢 买入 ($${biz.cost.toLocaleString()})</button>`;
+  } else {
+    actionHtml = `<div style="color:var(--pink);">现金不足 $${biz.cost.toLocaleString()}</div>`;
+  }
+
+  showModal(`
+    <h2>🏢 快车道投资</h2>
+    <div class="card-detail">
+      <div style="font-size:2rem;text-align:center;">${biz.icon}</div>
+      <div style="font-weight:700;font-size:1.1rem;">${biz.name}</div>
+      <div class="row"><span>价格</span><span>$${biz.cost.toLocaleString()}</span></div>
+      <div class="row"><span>月现金流</span><span style="color:var(--green)">+$${biz.cashflow.toLocaleString()}</span></div>
+      <div class="row"><span>你的现金</span><span>$${p.cash.toLocaleString()}</span></div>
+    </div>
+    <div class="actions">
+      ${actionHtml}
+      <button class="btn" onclick="closeModal()">跳过</button>
+    </div>
+  `);
+}
+
+function buyFastTrackBiz(name, cost, cashflow) {
+  const p = G.player;
+  if (p.cash < cost) return;
+  p.cash -= cost;
+  p.assets.push({ id: Date.now(), name, type:'business', cost, cashflow });
+  logEvent('🏢', `买入快车道企业「${name}」，月现金流+$${cashflow.toLocaleString()}`);
+  recalcFinances();
+  closeModal();
+}
+
+function franchiseBiz(name, cost, cashflow) {
+  const p = G.player;
+  if (p.cash < cost) return;
+  p.cash -= cost;
+  p.assets.push({ id: Date.now(), name: name+' (特许)', type:'business', cost, cashflow });
+  logEvent('🔁', `特许经营「${name}」，再付$${cost.toLocaleString()}，月现金流+$${cashflow.toLocaleString()}`);
+  recalcFinances();
+  closeModal();
+}
+
+// ===================================================================
+// TURN ACTIONS
+// ===================================================================
+
+function doRollDice() {
+  if (G.waitingForAction) return;
+  const p = G.player;
+
+  // Check for skipped turns
+  if (p.turnsSkipped > 0) {
+    p.turnsSkipped--;
+    logEvent('⏸️', `失业中…还需等待 ${p.turnsSkipped} 回合`);
+    G.turn++;
+    renderAll();
+    return;
+  }
+
+  // Roll dice: 2 dice normal, 3 dice with charity
+  const diceCount = p.charityActive > 0 ? 3 : 2;
+  G.dice = rollDice(diceCount);
+  const totalSteps = G.dice.reduce((a,b) => a+b, 0);
+  if (p.charityActive > 0) p.charityActive--;
+  G.turn++;
+
+  // Animate dice
+  animateDice(G.dice, () => {
+    // Move player
+    if (p.track === 'ratrace') {
+      const newPos = movePlayer(totalSteps);
+      handleSpace(RATRACE_SPACES[newPos].type);
+
+      // Check escape condition
+      if (canEscapeRatRace(p)) {
+        setTimeout(() => {
+          showModal(`
+            <h2>🚀 恭喜！跳出老鼠赛跑！</h2>
+            <div class="card-detail" style="text-align:center;">
+              <div style="font-size:3rem;">🚀</div>
+              <p>被动收入 <strong>$${passiveIncome(p).toLocaleString()}/月</strong></p>
+              <p> > 2× 总支出 <strong>$${(totalExpenses(p)*2).toLocaleString()}/月</strong></p>
+              <p style="margin-top:8px;">买断资金：<strong style="color:var(--green);">$${(passiveIncome(p)*100).toLocaleString()}</strong></p>
+            </div>
+            <div class="actions">
+              <button class="btn primary" onclick="enterFastTrack();closeModal();">🚀 进入快车道！</button>
+            </div>
+          `);
+        }, 500);
+      }
+    } else {
+      // Fast Track
+      G.fastTrackPos += totalSteps;
+      processFastTrackSpace(G.fastTrackPos);
+    }
+
+    // Auto-save every 5 turns
+    if (G.turn % 5 === 0) {
+      saveGame();
+      showToast('💾 游戏已自动保存');
+    }
+
+    if (G.phase === 'won') {
+      setTimeout(() => {
+        showModal(`
+          <h2>🏆 财务自由！</h2>
+          <div class="card-detail" style="text-align:center;">
+            <div style="font-size:4rem;">🏆</div>
+            <p>恭喜！你实现了财务自由！</p>
+            ${p.dream ? `<p>梦想：<strong>${p.dream.icon} ${p.dream.name}</strong></p>` : ''}
+            <p>总回合：<strong>${G.turn}</strong></p>
+            <p>净资产：<strong>$${netWorth(p).toLocaleString()}</strong></p>
+          </div>
+          <div class="actions">
+            <button class="btn primary" onclick="resetGame()">🔄 再来一局</button>
+          </div>
+        `);
+      }, 800);
+    }
+
+    renderAll();
+  });
+}
+
+function animateDice(dice, callback) {
+  const diceEls = document.querySelectorAll('.die');
+  let count = 0;
+  const maxFrames = 10;
+  const interval = setInterval(() => {
+    diceEls.forEach((el, i) => {
+      if (i < dice.length) {
+        el.textContent = Math.floor(Math.random()*6)+1;
+        el.classList.add('rolling');
+      }
+    });
+    count++;
+    if (count >= maxFrames) {
+      clearInterval(interval);
+      diceEls.forEach((el, i) => {
+        el.classList.remove('rolling');
+        if (i < dice.length) el.textContent = dice[i];
+      });
+      setTimeout(callback, 200);
+    }
+  }, 100);
+}
+
+// ===================================================================
+// SHOW TOAST
+// ===================================================================
+
+function resetGame() {
+  if (confirm('确定重新开始？当前进度将丢失。')) {
+    _noSave = true;
+    localStorage.removeItem('cashflow202_save');
+    location.reload();
+  }
+}
+
+function goToMenu() {
+  if (confirm('返回主菜单？游戏会自动保存。')) {
+    saveGame();
+    G.phase = 'menu';
+    localStorage.removeItem('cashflow202_save');
+    _noSave = true;
+    location.reload();
+  }
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type||'');
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ===================================================================
+// RENDER
+// ===================================================================
+
+function renderBoard() {
+  const svg = document.getElementById('board-svg');
+  const p = G.player;
+  const cx = 300, cy = 240;
+
+  let html = '';
+
+  if (p.track === 'ratrace') {
+    // Draw outer fast track ring (dimmed)
+    html += `<circle cx="${cx}" cy="${cy}" r="210" fill="none" stroke="var(--surface2)" stroke-width="40" opacity="0.4"/>`;
+    // Draw inner rat race ring
+    html += `<circle cx="${cx}" cy="${cy}" r="140" fill="none" stroke="var(--surface2)" stroke-width="50"/>`;
+
+    // Rat race spaces (24 spaces)
+    const n = RATRACE_SPACES.length;
+    for (let i = 0; i < n; i++) {
+      const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+      const r = 140;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      const isCurrent = i === p.position;
+      const space = RATRACE_SPACES[i];
+
+      // Color by type
+      const typeColors = {
+        start:'#00d69c', payday:'#00d69c',
+        bigDeal:'#7c5cfc', smallDeal:'#54a0ff',
+        market:'#ff9f43', doodad:'#ff6b81',
+        baby:'#feca57', downsized:'#ff4757',
+        charity:'#00d2d3'
+      };
+      const tc = typeColors[space.type] || 'var(--border)';
+
+      let fill = 'var(--surface)';
+      let stroke = tc;
+      if (isCurrent) { fill = '#fff'; stroke = '#fff'; }
+
+      html += `<circle cx="${x}" cy="${y}" r="${isCurrent?18:9}" fill="${fill}" stroke="${stroke}" stroke-width="${isCurrent?3:2}" class="space-dot" data-idx="${i}"/>`;
+      // Show icon on all spaces
+      html += `<text x="${x}" y="${y+3}" text-anchor="middle" fill="${isCurrent?'#000':'var(--text-dim)'}" font-size="${isCurrent?10:7}" font-weight="${isCurrent?'bold':'normal'}">${space.icon}</text>`;
+      // Show label on current space
+      if (isCurrent) {
+        html += `<text x="${x}" y="${y-24}" text-anchor="middle" fill="var(--yellow)" font-size="10" font-weight="bold">📍${space.label}</text>`;
+        // Glow ring
+        html += `<circle cx="${x}" cy="${y}" r="22" fill="none" stroke="var(--yellow)" stroke-width="1.5" opacity="0.6"><animate attributeName="r" from="22" to="28" dur="1s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.6" to="0" dur="1s" repeatCount="indefinite"/></circle>`;
+      }
+    }
+  } else {
+    // Fast Track view
+    html += `<circle cx="${cx}" cy="${cy}" r="210" fill="none" stroke="var(--surface2)" stroke-width="40"/>`;
+    html += `<circle cx="${cx}" cy="${cy}" r="140" fill="none" stroke="var(--surface2)" stroke-width="50" opacity="0.3"/>`;
+
+    // Fast track spaces (simplified: 30 positions around the ring)
+    const n = 30;
+    for (let i = 0; i < n; i++) {
+      const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+      const r = 210;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      const isCurrent = i === (G.fastTrackPos % n);
+
+      let fill = 'var(--surface)';
+      if (isCurrent) fill = 'var(--yellow)';
+
+      html += `<circle cx="${x}" cy="${y}" r="${isCurrent?14:8}" fill="${fill}" stroke="var(--border)" stroke-width="${isCurrent?3:1}"/>`;
+
+      if (i % 3 === 0) html += `<text x="${x}" y="${y}" text-anchor="middle" fill="var(--yellow)" font-size="7">🏢</text>`;
+      if (i % 7 === 0) html += `<text x="${x}" y="${y}" text-anchor="middle" fill="var(--green)" font-size="7">💵</text>`;
+
+      if (isCurrent) {
+        html += `<text x="${x}" y="${y-18}" text-anchor="middle" fill="var(--yellow)" font-size="10" font-weight="bold">📍</text>`;
+        // Dream indicator
+        if (p.dream && i % 11 === 0) {
+          html += `<text x="${x}" y="${y+22}" text-anchor="middle" fill="var(--pink)" font-size="7">🌟${p.dream.icon}</text>`;
+        }
+      }
+    }
+  }
+
+  // Center label
+  html += `<text x="${cx}" y="${cy}" text-anchor="middle" fill="var(--text-dim)" font-size="12">${p.track==='ratrace'?'🐭 鼠赛跑':'🚀 快车道'}</text>`;
+  html += `<text x="${cx}" y="${cy+18}" text-anchor="middle" fill="var(--text-dim)" font-size="10">第 ${G.turn} 回合</text>`;
+
+  svg.innerHTML = html;
+}
+
+function renderSheet() {
+  const p = G.player;
+  const prof = G.profession;
+  const ti = totalIncome(p);
+  const te = totalExpenses(p);
+  const cf = ti - te;
+  const pi = passiveIncome(p);
+  const escapeTarget = te * 2;
+  const progress = Math.min(100, Math.round((pi / escapeTarget) * 100));
+
+  let assetsHtml = '';
+  for (const a of p.assets) {
+    assetsHtml += `<div class="asset-item">
+      <span>${a.name} ${a.shares ? `×${a.shares}` : ''}</span>
+      <span style="color:var(--green);">${a.cashflow ? '+$'+a.cashflow.toLocaleString()+'/月' : ''}</span>
+      <button class="sell-btn" onclick="sellAsset(${a.id})">卖出</button>
+    </div>`;
+  }
+  if (!assetsHtml) assetsHtml = '<div style="color:var(--text-dim);font-size:0.75rem;padding:8px;">暂无资产</div>';
+
+  // 202: Short positions
+  let shortHtml = '';
+  if (p.shortPositions && p.shortPositions.length) {
+    for (const s of p.shortPositions) {
+      shortHtml += `<div class="asset-item" style="border-left:2px solid var(--orange);">
+        <span>🔻 做空 ${s.symbol}</span>
+        <span>${s.shares}股 @$${s.priceSold}</span>
+      </div>`;
+    }
+  }
+
+  document.getElementById('sheet').innerHTML = `
+    <h3>👤 ${prof.icon} ${prof.name} ${p.track==='fasttrack'?'🚀':''}</h3>
+
+    ${G.turn <= 1 && p.track==='ratrace' ? `
+    <div style="background:var(--primary-glow);border:1px solid var(--primary);border-radius:8px;padding:10px;margin-bottom:10px;font-size:0.75rem;line-height:1.6;">
+      <strong>🎓 新手提示</strong><br>
+      ① 按 <strong>🎲 掷骰子</strong> 开始移动<br>
+      ② 遇到 💼 大买卖 → 买有「月现金流」的<br>
+      ③ 遇到 🛒 小生意 → 低价买股票等涨<br>
+      ④ 目标：<strong style="color:var(--yellow);">被动收入 > 2× 支出</strong>
+    </div>` : ''}
+
+    <div class="summary-box" style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-around;">
+        <div><div class="big-num" style="font-size:1.2rem;">$${p.cash.toLocaleString()}</div><div class="label">现金</div></div>
+        <div><div class="big-num" style="color:${cf>=0?'var(--green)':'var(--pink)'};font-size:1.2rem;">$${cf.toLocaleString()}</div><div class="label">月现金流</div></div>
+        <div><div class="big-num" style="color:var(--yellow);font-size:1.2rem;">$${netWorth(p).toLocaleString()}</div><div class="label">净资产</div></div>
+      </div>
+      ${p.track === 'ratrace' ? `
+      <div style="margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;">
+          <span>出圈进度</span><span>被动收入 $${pi.toLocaleString()} / 目标 $${escapeTarget.toLocaleString()}</span>
+        </div>
+        <div class="progress-bar"><div class="fill" style="width:${progress}%"></div></div>
+      </div>` : ''}
+    </div>
+
+    <div class="sheet-section"><h4>📈 收入</h4>
+      <div class="sheet-row"><span>工资</span><span class="val">$${p.income.salary.toLocaleString()}</span></div>
+      ${p.income.realEstate ? `<div class="sheet-row"><span>房地产</span><span class="val pos">+$${p.income.realEstate.toLocaleString()}</span></div>` : ''}
+      ${p.income.business ? `<div class="sheet-row"><span>企业</span><span class="val pos">+$${p.income.business.toLocaleString()}</span></div>` : ''}
+      ${p.income.dividend ? `<div class="sheet-row"><span>股息</span><span class="val pos">+$${p.income.dividend.toLocaleString()}</span></div>` : ''}
+      ${p.income.interest ? `<div class="sheet-row"><span>利息</span><span class="val pos">+$${p.income.interest.toLocaleString()}</span></div>` : ''}
+      <div class="sheet-row" style="font-weight:700;"><span>总收入</span><span class="val">$${ti.toLocaleString()}</span></div>
+    </div>
+
+    <div class="sheet-section"><h4>📉 支出</h4>
+      <div class="sheet-row"><span>税</span><span class="val neg">$${p.expenses.tax.toLocaleString()}</span></div>
+      <div class="sheet-row"><span>房贷</span><span class="val neg">$${p.expenses.mortgage.toLocaleString()}</span></div>
+      <div class="sheet-row"><span>学贷</span><span class="val neg">$${p.expenses.schoolLoan.toLocaleString()}</span></div>
+      <div class="sheet-row"><span>车贷</span><span class="val neg">$${p.expenses.carLoan.toLocaleString()}</span></div>
+      <div class="sheet-row"><span>信用卡</span><span class="val neg">$${p.expenses.creditCard.toLocaleString()}</span></div>
+      <div class="sheet-row"><span>其他</span><span class="val neg">$${p.expenses.other.toLocaleString()}</span></div>
+      ${p.bankLoanUnits>0?`<div class="sheet-row"><span>银行贷款利息</span><span class="val neg">$${p.expenses.bankLoan.toLocaleString()}</span></div>`:''}
+      ${p.children>0?`<div class="sheet-row"><span>子女(${p.children}个)</span><span class="val neg">$${p.expenses.children.toLocaleString()}</span></div>`:''}
+      <div class="sheet-row" style="font-weight:700;"><span>总支出</span><span class="val neg">$${te.toLocaleString()}</span></div>
+    </div>
+
+    <div class="sheet-section"><h4>🏠 资产 (${p.assets.length})</h4>${assetsHtml}</div>
+    ${shortHtml}
+    <div class="sheet-section" style="margin-top:6px;">
+      ${p.bankLoanUnits>0?`<div class="sheet-row"><span>🏦 银行贷款</span><span class="val neg">$${(p.bankLoanUnits*1000).toLocaleString()}</span></div>`:''}
+    </div>
+  `;
+}
+
+function renderActions() {
+  const p = G.player;
+  let html = '';
+
+  if (G.phase === 'menu' || G.phase === 'won') {
+    html = `<button class="btn primary" onclick="location.reload()">🔄 重新开始</button>`;
+  } else {
+    // Dice
+    const diceCount = p.charityActive > 0 ? 2 : 1;
+    html += `<div class="dice-box">`;
+    html += `<div class="die">${G.dice[0]||'?'}</div>`;
+    html += `<div class="die">${G.dice[1]||'?'}</div>`;
+    if (diceCount > 2 && G.dice.length > 2) html += `<div class="die" style="border-color:var(--orange);">${G.dice[2]||'?'}</div>`;
+    html += `<span style="font-size:0.7rem;color:var(--text-dim);">${diceCount>2?'🎗️慈善×3':'×2 双骰'}</span>`;
+    html += `</div>`;
+
+    html += `<button class="btn primary" id="btn-roll" onclick="doRollDice()" ${G.waitingForAction?'disabled':''}>
+      🎲 掷骰子 ${G.waitingForAction?'(处理中…)':'[空格键]'}
+    </button>`;
+
+    if (p.turnsSkipped > 0) {
+      html += `<span style="color:var(--pink);align-self:center;">📉 失业中，还需${p.turnsSkipped}回合</span>`;
+    }
+
+    html += `<button class="btn" onclick="showBorrowModal()">🏦 贷款</button>`;
+    html += `<button class="btn" onclick="repayLoan()" ${p.bankLoanUnits<=0?'disabled':''}>💳 还贷</button>`;
+
+    // 202: Short selling button
+    if (p.track === 'ratrace') {
+      html += `<button class="btn" style="border-color:var(--orange);color:var(--orange);" onclick="showShortSellModal()">🔻 做空</button>`;
+    }
+
+    html += `<button class="btn" onclick="if(saveGame())showToast('💾 已保存')">💾 存档</button>`;
+    html += `<button class="btn" onclick="resetGame()">🔄 重来</button>`;
+    html += `<button class="btn" onclick="goToMenu()" style="border-color:var(--cyan);color:var(--cyan);">🏠 菜单</button>`;
+  }
+
+  document.getElementById('action-bar').innerHTML = html;
+}
+
+function renderEventLog() {
+  const el = document.getElementById('event-log');
+  el.innerHTML = G.eventLog.slice(0, 30).map(e =>
+    `<div class="entry"><span class="emoji">${e.emoji}</span>[T${e.turn}] ${e.text}</div>`
+  ).join('');
+}
+
+function renderTurnInfo() {
+  document.getElementById('turn-info').innerHTML = `
+    <span>📅 第 ${G.turn} 回合</span>
+    <span>👶 ${G.player.children} 个孩子</span>
+    <span>🏦 贷款 $${(G.player.bankLoanUnits*1000).toLocaleString()}</span>
+    <span>💵 现金 $${G.player.cash.toLocaleString()}</span>
+  `;
+}
+
+function renderAll() {
+  if (!G || G.phase === 'menu') return;
+  renderBoard();
+  renderSheet();
+  renderActions();
+  renderEventLog();
+  renderTurnInfo();
+}
+
+// 202: Short Sell Modal
+function showShortSellModal() {
+  const p = G.player;
+  showModal(`
+    <h2>🔻 做空股票 (202高级功能)</h2>
+    <p style="font-size:0.85rem;color:var(--text-dim);">借入股票高价卖出，等股价下跌后低价买回，赚取差价</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+      <div class="card-detail" style="cursor:pointer;" onclick="doShortSell('MYT4U',100,25);closeModal();">
+        <div><strong>MYT4U</strong> — 100股 @$25/股</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);">收到 $2,500，等市场崩盘后买回</div>
+      </div>
+      <div class="card-detail" style="cursor:pointer;" onclick="doShortSell('2BIG',100,12);closeModal();">
+        <div><strong>2BIG</strong> — 100股 @$12/股</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);">收到 $1,200，等市场崩盘后买回</div>
+      </div>
+      <div class="card-detail" style="cursor:pointer;" onclick="doShortSell('OK4U',100,18);closeModal();">
+        <div><strong>OK4U</strong> — 100股 @$18/股</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);">收到 $1,800，等市场崩盘后买回</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+    </div>
+  `);
+}
+
+// ===================================================================
+// MENU SCREENS
+// ===================================================================
+
+function showCareerScreen() {
+  const existing = loadGame();
+  let continueHtml = '';
+  if (existing) {
+    const p = existing.player;
+    continueHtml = `
+      <div class="card-detail" style="cursor:pointer;border:2px solid var(--green);margin-bottom:12px;" onclick="loadSavedGame()">
+        <div style="font-weight:700;">💾 继续上次游戏</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);">
+          ${PROFESSIONS.find(p=>p.id===p.profession)?.icon} ${PROFESSIONS.find(p=>p.id===p.profession)?.name} |
+          第 ${existing.turn} 回合 | $${p.cash.toLocaleString()} 现金
+        </div>
+      </div>`;
+  }
+
+  document.body.innerHTML = `
+<div style="max-width:900px;margin:0 auto;padding:40px 20px;">
+
+  <header style="text-align:center;margin-bottom:30px;">
+    <h1 style="font-size:2.4rem;font-weight:800;background:linear-gradient(135deg, var(--primary), var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+      💰 Cashflow 202
+    </h1>
+    <p style="color:var(--text-dim);margin-top:6px;">富爸爸穷爸爸 · 财商教育游戏 · <a href="index.html" style="color:var(--primary);text-decoration:none;">← 返回 MyNav</a></p>
+    <p style="color:var(--text-dim);font-size:0.8rem;">被动收入 > 2×总支出 → 跳出老鼠赛跑 → 实现财务自由</p>
+  </header>
+
+  ${continueHtml}
+
+  <h2 style="font-size:1.1rem;margin-bottom:12px;">🎯 选择你的职业</h2>
+  <div class="career-grid" id="career-grid">
+    ${PROFESSIONS.map(p => `
+      <div class="career-card" onclick="selectCareer('${p.id}')">
+        <span class="c-icon">${p.icon}</span>
+        <div class="c-name">${p.name}</div>
+        <div class="c-salary">月薪 $${p.salary.toLocaleString()}</div>
+        <div class="c-expense">月支出 $${(p.mortgage+p.schoolLoan+p.carLoan+p.creditCard+p.other+Math.round(p.salary*0.25)).toLocaleString()}</div>
+        <div style="font-size:0.7rem;color:var(--text-dim);margin-top:4px;">现金流 $${(p.salary-(p.mortgage+p.schoolLoan+p.carLoan+p.creditCard+p.other+Math.round(p.salary*0.25))).toLocaleString()}</div>
+      </div>
+    `).join('')}
+  </div>
+
+  <div style="margin-top:24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
+    <h3 style="font-size:0.9rem;margin-bottom:8px;">📋 游戏规则速览</h3>
+    <div style="font-size:0.8rem;color:var(--text-dim);line-height:1.7;">
+      <p>🎲 掷骰子在鼠赛跑圈前进</p>
+      <p>💼 停在机会格 → 买入股票/房产/企业</p>
+      <p>📊 市场风云 → 把握买卖时机</p>
+      <p>🛍️ 额外支出 → 强制消费（剁手！）</p>
+      <p>🏦 可向银行贷款 $1000/份（月息10%）</p>
+      <p>🚀 <strong style="color:var(--yellow);">被动收入 > 2×总支出</strong> → 出圈！</p>
+      <p>🌟 快车道买梦想 → 财务自由！</p>
+      <p style="color:var(--orange);margin-top:4px;">📌 202特色：做空股票、期权、市场重洗、组合抽卡</p>
+    </div>
+  </div>
+</div>`;
+}
+
+function selectCareer(profId) {
+  showDreamScreen(profId);
+}
+
+function showDreamScreen(profId) {
+  document.body.innerHTML = `
+<div style="max-width:600px;margin:0 auto;padding:40px 20px;text-align:center;">
+  <h1 style="font-size:1.8rem;margin-bottom:8px;">🌟 选择你的梦想</h1>
+  <p style="color:var(--text-dim);margin-bottom:20px;">在快车道上，你需要攒够钱买下这个梦想才能赢</p>
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    ${DREAMS.map((d,i) => `
+      <div class="card-detail" style="cursor:pointer;text-align:left;" onclick="startGame('${profId}',${i})">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:2rem;">${d.icon}</span>
+          <div style="flex:1;">
+            <div style="font-weight:700;">${d.name}</div>
+            <div style="font-size:0.85rem;color:var(--text-dim);">需要 $${d.cost.toLocaleString()}</div>
+          </div>
+          <span style="color:var(--primary);">→</span>
+        </div>
+      </div>
+    `).join('')}
+  </div>
+  <button class="btn" style="margin-top:16px;" onclick="location.reload()">🔙 返回</button>
+</div>`;
+}
+
+function startGame(profId, dreamId) {
+  G = createGame(profId, dreamId);
+  logEvent('🎮', `新游戏开始！职业：${PROFESSIONS.find(p=>p.id===profId).name}，梦想：${DREAMS[dreamId].name}`);
+  saveGame(); // Explicitly save before reload
+  location.reload();
+}
+
+function loadSavedGame() {
+  G = loadGame();
+  if (G) {
+    // Recreate missing methods
+    logEvent('💾', '存档已加载');
+    location.reload();
+  }
+}
+
+// ===================================================================
+// INIT
+// ===================================================================
+
+function init() {
+  // Check if game already started
+  if (G && G.phase !== 'menu') {
+    renderAll();
+    return;
+  }
+
+  // Try to load save
+  const saved = loadGame();
+  if (saved) {
+    G = saved;
+    G.waitingForAction = false;
+    document.getElementById('board-title').textContent = G.player.track === 'ratrace' ? '🐭 老鼠赛跑 · Rat Race' : '🚀 快车道 · Fast Track';
+    renderAll();
+    return;
+  }
+
+  // No save — show career selection
+  showCareerScreen();
+}
+
+// On page load
+if (G === null) {
+  // Check localStorage first
+  const saved = loadGame();
+  if (saved) {
+    G = saved;
+    G.waitingForAction = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (G) {
+    document.getElementById('board-title').textContent = G.player.track === 'ratrace' ? '🐭 老鼠赛跑 · Rat Race' : '🚀 快车道 · Fast Track';
+    renderAll();
+  } else {
+    showCareerScreen();
+  }
+});
+
+// Keyboard shortcut: Space to roll dice
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && G && G.phase !== 'menu' && G.phase !== 'won') {
+    // Don't trigger when typing in input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    e.preventDefault();
+    doRollDice();
+  }
+});
+
+// Save before close
+window.addEventListener('beforeunload', () => {
+  if (!_noSave && G && G.phase !== 'menu' && G.phase !== 'won') {
+    saveGame();
+  }
+});
+</script>
+</body>
+</html>
