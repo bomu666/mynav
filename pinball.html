@@ -1,796 +1,511 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="dark">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>波沐弹球 — Bomu Pinball</title>
-<meta name="description" content="波沐游戏出品 — 数字砖块弹球，还原经典玩法">
 <style>
 :root {
   --bg:#0a0a14; --surface:#141428; --surface2:#1e1e3a; --border:#282850;
-  --text:#e4e4f0; --text-dim:#8080a8; --primary:#7c5cfc; --primary-glow:rgba(124,92,252,0.25);
-  --green:#00d69c; --blue:#54a0ff; --orange:#ff9f43; --pink:#ff6b81;
-  --cyan:#00d2d3; --yellow:#feca57; --red:#ff4757; --radius:14px; --gold:#ffd700;
+  --text:#e4e4f0; --text-dim:#8080a8;
 }
-* { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family:'Inter','PingFang SC','Microsoft YaHei',sans-serif;
-  background:var(--bg); color:var(--text); overflow:hidden;
-  height:100dvh; width:100vw; display:flex; flex-direction:column; align-items:center;
-  background-image:radial-gradient(ellipse 60% 40% at 50% -10%, var(--primary-glow), transparent);
-  touch-action:none; user-select:none; -webkit-user-select:none;
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'PingFang SC','Microsoft YaHei',sans-serif;
+  background:#000;overflow:hidden;height:100dvh;width:100vw;
+  display:flex;align-items:center;justify-content:center;
+  touch-action:none;user-select:none;-webkit-user-select:none;
 }
-#game-wrap { position:relative; width:100%; max-width:540px; height:100dvh; display:flex; flex-direction:column; }
-#top-bar { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; gap:6px; flex-shrink:0; }
-#top-bar .logo { font-size:1rem; font-weight:800; background:linear-gradient(135deg,var(--primary),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-#stats-row { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; padding:2px 8px; font-size:0.72rem; color:var(--text-dim); flex-shrink:0; }
-#stats-row span { background:var(--surface2); padding:2px 8px; border-radius:8px; }
-#stats-row .gold { color:var(--gold); }
-#cvs-wrap { flex:1; position:relative; min-height:0; }
-canvas { display:block; width:100%; height:100%; }
-#action-bar { display:flex; gap:6px; padding:6px; justify-content:center; flex-wrap:wrap; flex-shrink:0; }
-#action-bar button {
-  padding:6px 12px; border-radius:16px; border:1px solid var(--border);
-  background:var(--surface2); color:var(--text); cursor:pointer;
-  font-size:0.75rem; font-weight:600; transition:all 0.2s; font-family:inherit; white-space:nowrap;
+#game-wrap{position:relative;width:100%;height:100dvh;max-width:500px;}
+canvas{display:block;width:100%;height:100%;}
+.toast{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:200;
+  background:#222;color:#fff;padding:8px 20px;border-radius:20px;
+  font-weight:700;font-size:0.85rem;opacity:0;transition:opacity 0.3s;pointer-events:none;
 }
-#action-bar button:hover { border-color:var(--primary); box-shadow:0 0 10px var(--primary-glow); }
-#action-bar button:disabled { opacity:0.4; pointer-events:none; }
-#action-bar .btn-p { background:var(--primary); color:#fff; border-color:var(--primary); }
-#action-bar .btn-g { background:var(--gold); color:#000; border-color:var(--gold); }
-.modal-overlay {
-  position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px);
-  z-index:100; display:flex; align-items:center; justify-content:center; animation:fi 0.2s;
-}
-@keyframes fi { from{opacity:0} to{opacity:1} }
-.modal {
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-  padding:18px; width:90%; max-width:400px; max-height:85vh; overflow-y:auto;
-  box-shadow:0 16px 48px rgba(0,0,0,0.6); animation:su 0.25s;
-}
-@keyframes su { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
-.modal h2 { font-size:1.1rem; margin-bottom:10px; text-align:center; }
-.modal .acts { display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; justify-content:center; }
-.modal button {
-  padding:8px 16px; border-radius:18px; border:1px solid var(--border);
-  background:var(--surface2); color:var(--text); cursor:pointer;
-  font-size:0.82rem; font-weight:600; font-family:inherit; transition:all 0.2s;
-}
-.modal button:hover { border-color:var(--primary); }
-.modal .btn-p { background:var(--primary); color:#fff; border-color:var(--primary); }
-.modal .btn-g { background:var(--gold); color:#000; border-color:var(--gold); }
-.sel-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:6px; }
-.sel-card { background:var(--surface2); border:2px solid var(--border); border-radius:8px; padding:8px; cursor:pointer; text-align:center; transition:all 0.2s; font-size:0.75rem; }
-.sel-card:hover { border-color:var(--primary); transform:translateY(-1px); }
-.sel-card.on { border-color:var(--primary); background:rgba(124,92,252,0.2); }
-.sel-card .em { font-size:1.6rem; display:block; }
-.sel-card.lock { opacity:0.4; pointer-events:none; }
-.toast { position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:200; background:var(--green); color:#000; padding:8px 20px; border-radius:20px; font-weight:700; font-size:0.85rem; opacity:0; transition:opacity 0.3s; pointer-events:none; }
-.toast.show { opacity:1; }
-.toast.warn { background:var(--orange); }
-.hidden { display:none !important; }
+.toast.show{opacity:1;}
 </style>
 </head>
 <body>
-<div id="game-wrap">
-  <div id="top-bar">
-    <span class="logo">🎱 波沐弹球</span>
-    <span style="font-size:0.65rem;color:var(--text-dim);">Bomu Pinball</span>
-    <button onclick="goMenu()" style="padding:4px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:0.7rem;font-family:inherit;">🏠</button>
-  </div>
-  <div id="stats-row">
-    <span>🎯层 <b id="s-layer">1</b></span>
-    <span>⚽球 <b id="s-balls">10</b></span>
-    <span class="gold">💰<b id="s-gold">0</b></span>
-    <span>🔥×<b id="s-combo">1</b></span>
-  </div>
-  <div id="cvs-wrap"><canvas id="cvs"></canvas></div>
-  <div id="action-bar">
-    <button onclick="useHammer()" id="btn-hammer" class="btn-g">🔨钱坤 <small id="cnt-hammer">0</small></button>
-    <button onclick="useEye()" id="btn-eye">👁️透视 <small id="cnt-eye">0</small></button>
-    <button onclick="spinWheel()" id="btn-wheel">🎲轮盘</button>
-    <button onclick="launchAll()" id="btn-launch" class="btn-p">🚀发射</button>
-    <button onclick="recallAll()" id="btn-recall" style="border-color:var(--orange);color:var(--orange);">⬇️收回</button>
-    <button onclick="toggleSpeed()" id="btn-speed" style="border-color:var(--cyan);color:var(--cyan);">⏩2×</button>
-  </div>
-</div>
+<div id="game-wrap"><canvas id="cvs"></canvas></div>
 <div class="toast" id="toast"></div>
 
 <script>
-// ===================================================================
-// 波沐弹球 — 使用原版精灵素材
-// ===================================================================
+// ============================================================
+// 波沐弹球 — 原版素材完整移植
+// ============================================================
 
-// ──── Asset Loader ────
-const IMG = {};
-const PLIST = {}; // parsed frame data
-const ATLAS = {
-  game_obj: 'sprites/game_obj.png',
-  game_ui: 'sprites/game_ui.png',
-  home_ui: 'sprites/home_ui.png',
-  home_big: 'sprites/home_big.png',
-  block_anim: 'sprites/block_anim.png',
-  game_anim: 'sprites/game_anim.png',
-  public_ui: 'sprites/public_ui.png',
-  public_obj: 'sprites/public_obj.png',
-  loading_ui: 'sprites/loading_ui.png',
-  public_cover: 'sprites/public_cover.png',
+// ──── Assets ────
+const ATLAS_FILES = {
+  game_obj:'sprites/game_obj.png', game_ui:'sprites/game_ui.png',
+  home_ui:'sprites/home_ui.png', home_big:'sprites/home_big.png',
+  block_anim:'sprites/block_anim.png', game_anim:'sprites/game_anim.png',
+  public_ui:'sprites/public_ui.png', public_obj:'sprites/public_obj.png',
+  loading_ui:'sprites/loading_ui.png', public_cover:'sprites/public_cover.png',
 };
+const ROLE_IDS = ['t1','t2','t3','t7','tu4','tu6','tuzi5'];
 
-function loadImage(key, url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => { IMG[key] = img; resolve(); };
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
-async function loadPlist(key, url) {
-  const resp = await fetch(url);
-  const xml = await resp.text();
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xml, 'text/xml');
-  const frames = {};
-  const dicts = doc.getElementsByTagName('dict');
-  for (const dict of dicts) {
-    const keys = dict.getElementsByTagName('key');
-    for (const k of keys) {
-      const name = k.textContent;
-      const next = k.nextElementSibling;
-      if (!next || next.tagName !== 'dict') continue;
-      const d = next;
-      const getVal = (s) => {
-        const el = d.getElementsByTagName('key');
-        for (const e of el) {
-          if (e.textContent === s) {
-            const n = e.nextElementSibling;
-            return n ? n.textContent : null;
-          }
-        }
-        return null;
-      };
-      const frameStr = getVal('frame');
-      const offsetStr = getVal('offset');
-      const rotated = getVal('rotated') === 'true';
-      const srcSizeStr = getVal('sourceSize');
-      const srcRectStr = getVal('sourceColorRect');
-
-      const parseRect = (s) => {
-        if (!s) return [0,0,0,0];
-        const m = s.match(/\{(-?\d+),(-?\d+)\},\{(\d+),(\d+)\}/);
-        return m ? [parseInt(m[1]),parseInt(m[2]),parseInt(m[3]),parseInt(m[4])] : [0,0,0,0];
-      };
-
-      const [fx,fy,fw,fh] = parseRect(frameStr);
-      const [ox,oy] = offsetStr ? parseRect(offsetStr) : [0,0];
-      const [ssw,ssh] = srcSizeStr ? parseRect(srcSizeStr).slice(2) : [fw,fh];
-      const srcRect = parseRect(srcRectStr);
-
-      frames[name] = {
-        x:fx, y:fy, w:fw, h:fh,
-        ox, oy,
-        srcW:ssw||fw, srcH:ssh||fh,
-        rotated,
-        srcX:srcRect[0]||0, srcY:srcRect[1]||0,
-        srcRX:srcRect[2]||fw, srcRY:srcRect[3]||fh,
-      };
+const IMG={}, PLIST={};
+async function loadImg(k,u){return new Promise((R,J)=>{const i=new Image();i.onload=()=>{IMG[k]=i;R();};i.onerror=J;i.src=u;});}
+async function loadPlist(k,u){
+  const t=await(await fetch(u)).text();
+  const doc=new DOMParser().parseFromString(t,'text/xml');
+  const frames={};
+  for(const d of doc.getElementsByTagName('dict')){
+    const ks=d.getElementsByTagName('key');
+    for(const K of ks){
+      const name=K.textContent,n=K.nextElementSibling;
+      if(!n||n.tagName!=='dict')continue;
+      const g=s=>{for(const e of n.getElementsByTagName('key'))if(e.textContent===s)return e.nextElementSibling?.textContent;return null;};
+      const fs=g('frame'),os=g('offset'),rot=g('rotated')==='true',ss=g('sourceSize');
+      const pr=s=>{if(!s)return[0,0,0,0];const m=s.match(/\{(-?\d+),(-?\d+)\},\{(\d+),(\d+)\}/);return m?[+m[1],+m[2],+m[3],+m[4]]:[0,0,0,0];};
+      const[fx,fy,fw,fh]=pr(fs);const[ox,oy]=pr(os);const[ssw,ssh]=ss?pr(ss).slice(2):[fw,fh];
+      frames[name]={x:fx,y:fy,w:fw,h:fh,ox,oy,srcW:ssw||fw,srcH:ssh||fh,rotated:rot};
     }
   }
-  PLIST[key] = frames;
+  PLIST[k]=frames;
 }
-
-async function loadAllAssets() {
-  const loads = [];
-  for (const [k, v] of Object.entries(ATLAS)) {
-    loads.push(loadImage(k, v));
-    const plistUrl = v.replace('.png', '.plist');
-    loads.push(loadPlist(k, plistUrl).catch(() => {}));
-  }
-  // Also load role PNGs
-  for (const rid of ['t1','t2','t3','t7','tu4','tu6','tuzi5']) {
-    loads.push(loadImage('role_'+rid, 'sprites/role/'+rid+'.png'));
-  }
-  await Promise.all(loads);
-}
-
-// ──── Sprite Drawing ────
-function drawSprite(ctx, atlasKey, frameName, dx, dy, dw, dh) {
-  const img = IMG[atlasKey];
-  const frames = PLIST[atlasKey];
-  if (!img || !frames || !frames[frameName]) return false;
-  const f = frames[frameName];
-  if (f.rotated) {
-    ctx.save();
-    ctx.translate(dx + dw/2, dy + dh/2);
-    ctx.rotate(-Math.PI/2);
-    ctx.drawImage(img, f.x, f.y, f.w, f.h, -dh/2, -dw/2, dh, dw);
-    ctx.restore();
-  } else {
-    ctx.drawImage(img, f.x, f.y, f.w, f.h, dx, dy, dw||f.w, dh||f.h);
-  }
+function getF(atlas,name){return(PLIST[atlas]||{})[name]||null;}
+function drawS(ctx,atlas,name,x,y,w,h,a){
+  const img=IMG[atlas],f=getF(atlas,name);
+  if(!img||!f)return false;
+  if(f.rotated){ctx.save();ctx.translate(x+(w||f.h)/2,y+(h||f.w)/2);ctx.rotate(-Math.PI/2);ctx.drawImage(img,f.x,f.y,f.w,f.h,-(h||f.w)/2,-(w||f.h)/2,h||f.w,w||f.h);ctx.restore();}
+  else ctx.drawImage(img,f.x,f.y,f.w,f.h,x,y,w||f.w,h||f.h);
+  if(a!==undefined)ctx.globalAlpha=a;
   return true;
 }
 
-function getFrame(atlasKey, frameName) {
-  const frames = PLIST[atlasKey];
-  return frames ? frames[frameName] : null;
-}
-
 // ──── Game State ────
-let G = null;
-
-function createGame() {
-  return {
-    phase: 'loading',
-    layer: 1, bricks: [], balls: [], gold: 0, score: 0, combo: 0,
-    maxLayer: parseInt(localStorage.getItem('bomu_ml')||'1'),
-    maxScore: parseInt(localStorage.getItem('bomu_ms')||'0'),
-    aimStart: null, aimCurrent: null, launching: false,
-    activeRole: 0, activeBall: 101,
-    ballsInRound: 10, totalBallsLaunched: 0,
-    hammerCount: 0, eyeCount: 0, eyeActive: false, hammerMode: false,
-    wheelSpins: 0, luckyPending: false, luckyResult: null,
-    particles: [], speedMultiplier: 2,
-    unlocks: JSON.parse(localStorage.getItem('bomu_unlocks')||'{"roles":[0],"balls":[101]}'),
-  };
-}
-
-function save() {
-  localStorage.setItem('bomu_ml', G.maxLayer);
-  localStorage.setItem('bomu_ms', G.maxScore);
-  localStorage.setItem('bomu_unlocks', JSON.stringify(G.unlocks));
-}
-
-// ──── Helpers ────
-const rng=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
-const rngF=(a,b)=>Math.random()*(b-a)+a;
-const pick=a=>a[Math.floor(Math.random()*a.length)];
-const dist=(a,b)=>Math.hypot(a.x-b.x,b.y-b.y);
-
-function weightedPick(items, wk) {
-  const t=items.reduce((s,i)=>s+i[wk],0); let r=Math.random()*t;
-  for(const i of items){r-=i[wk];if(r<=0)return i;}
-  return items[items.length-1];
-}
+const COLS=5,MAX_ROWS=8;
+let G={
+  phase:'loading',layer:1,bricks:[],balls:[],gold:0,score:0,combo:0,
+  maxLayer:+localStorage.getItem('bomu_ml')||1,maxScore:+localStorage.getItem('bomu_ms')||0,
+  aimStart:null,aimCurrent:null,launching:false,
+  role:0,ballId:101,ballCnt:10,ballLaunched:0,
+  hammer:0,eye:0,eyeOn:false,hammerOn:false,
+  spins:0,luckyP:false,luckyR:null,
+  parts:[],speedMul:2,revives:3,
+  unlock:JSON.parse(localStorage.getItem('bomu_unlocks')||'{"roles":[0],"balls":[101]}'),
+  animTick:0,msg:'',
+};
+function save(){localStorage.setItem('bomu_ml',G.maxLayer);localStorage.setItem('bomu_ms',G.maxScore);localStorage.setItem('bomu_unlocks',JSON.stringify(G.unlock));}
 
 // ──── Config ────
-const COLS=5;
-
 const ROLES=[
-  {id:0,name:'阿弹',emoji:'😊',desc:'没有特别技能，但很温柔',skill:null,cost:0,spine:'t1'},
-  {id:1,name:'酷酷',emoji:'😎',desc:'携带5颗暴击球入场',skill:'crit5',cost:200,spine:'t2'},
-  {id:2,name:'游戏王',emoji:'👑',desc:'获得双倍金币',skill:'doubleGold',cost:300,spine:'t3'},
-  {id:3,name:'圆圆',emoji:'🌟',desc:'入场自带+5颗球',skill:'plus5',cost:250,spine:'t7'},
-  {id:4,name:'超兔',emoji:'🐰',desc:'携带10颗暴击球',skill:'crit10',cost:500,spine:'tu4'},
-  {id:5,name:'福娃娃',emoji:'👧',desc:'三倍金币！富家千金',skill:'tripleGold',cost:600,spine:'tu6'},
-  {id:6,name:'学霸',emoji:'🤓',desc:'自带10颗初始球入场',skill:'plus10',cost:400,spine:'tuzi5'},
+  {id:0,name:'阿弹',skill:null,cost:0,spine:'t1'},
+  {id:1,name:'酷酷',skill:'crit5',cost:200,spine:'t2'},
+  {id:2,name:'游戏王',skill:'dblG',cost:300,spine:'t3'},
+  {id:3,name:'圆圆',skill:'plus5',cost:250,spine:'t7'},
+  {id:4,name:'超兔',skill:'crit10',cost:500,spine:'tu4'},
+  {id:5,name:'福娃娃',skill:'tripG',cost:600,spine:'tu6'},
+  {id:6,name:'学霸',skill:'plus10',cost:400,spine:'tuzi5'},
 ];
-
-const BALLS=[
-  {id:101,name:'乒乓球',color:'#ff6b6b'},
-  {id:102,name:'小不点',color:'#ff4444'},
-  {id:103,name:'方块',color:'#ff8c00'},
-  {id:104,name:'笑脸',color:'#ffdd00'},
-  {id:105,name:'篮球',color:'#ff8c42'},
-  {id:106,name:'足球',color:'#fff'},
-  {id:107,name:'橄榄球',color:'#8b4513'},
-  {id:108,name:'棒球',color:'#f5f5dc'},
-  {id:109,name:'三角形',color:'#ff69b4'},
-  {id:110,name:'忍者镖',color:'#silver'},
-  {id:111,name:'红心',color:'#ff1744'},
-  {id:112,name:'彩蛋',color:'#rainbow'},
-  {id:113,name:'太极',color:'#333'},
-  {id:114,name:'金币球',color:'#ffd700'},
-  {id:115,name:'雪花',color:'#e0f7fa'},
-  {id:116,name:'风车',color:'#80deea'},
-  {id:117,name:'钻石',color:'#b3e5fc'},
-  {id:118,name:'彩三角',color:'#ff80ab'},
-  {id:119,name:'视窗',color:'#ce93d8'},
-  {id:120,name:'轮盘球',color:'#ffab40'},
-  {id:121,name:'饭团',color:'#fff'},
-];
-
-const BRICK_SPRITES = {
-  normal: ['play_brick_normal.png','play_brick_normal_hit.png'],
-  gold: ['play_brick_gold.png','play_brick_gold_hit.png'],
-  lucky: ['play_brick_lucky.png','play_brick_lucky_hit.png'],
-  move: ['play_brick_move.png','play_brick_move_hit.png'],
-  double: ['play_brick_double.png','play_brick_double_hit.png'],
-  strip: ['play_brick_strip.png','play_brick_strip_hit.png'],
-  tri_upl: ['play_brick_triangle_upl.png','play_brick_triangle_upl_hit.png'],
-  tri_upr: ['play_brick_triangle_upr.png','play_brick_triangle_upr_hit.png'],
-  tri_lowl: ['play_brick_triangle_lowl.png','play_brick_triangle_lowl_hit.png'],
-  tri_lowr: ['play_brick_triangle_lowr.png','play_brick_triangle_lowr_hit.png'],
+const BALL_TYPES={
+  pingpong:{id:101,name:'乒乓球',key:'ball_pingpong'},
+  football:{id:106,name:'足球',key:'ball_football'},
+  basketball:{id:105,name:'篮球',key:'ball_basketball'},
+  baseball:{id:108,name:'棒球',key:'ball_baseball'},
+  rugby:{id:107,name:'橄榄球',key:'ball_rugby'},
+  darts:{id:110,name:'忍者镖',key:'ball_darts'},
+  heart:{id:111,name:'红心',key:'ball_heart'},
+  egg:{id:112,name:'彩蛋',key:'ball_egg'},
+  diamond:{id:117,name:'钻石',key:'ball_diamonds'},
+  snowflake:{id:115,name:'雪花',key:'ball_snowflake'},
+  windmill:{id:116,name:'风车',key:'ball_windmill'},
+  sjx:{id:109,name:'三角形',key:'ball_sjx'},
+  square:{id:103,name:'方块',key:'ball_square'},
+  small:{id:102,name:'小不点',key:'ball_small'},
+  triangle:{id:118,name:'彩三角',key:'ball_triangle'},
+  zfx:{id:104,name:'笑脸',key:'ball_zfx'},
+  pingpong_s:{id:113,name:'太极',color:'#333'},
+  gold_b:{id:114,name:'金币球',color:'#ffd700'},
+  window:{id:119,name:'视窗',color:'#ce93d8'},
+  wheel_b:{id:120,name:'轮盘球',color:'#ffab40'},
+  rice:{id:121,name:'饭团',color:'#fff'},
 };
 
-const LUCKY_RESULTS=[
-  {text:'下一回合随机换一种弹球',good:true},
-  {text:'白来一趟，什么都没有！',good:false},
-  {text:'所有砖块数字隐藏！',good:false},
-  {text:'下一回合砖块层数+1！',good:false},
-  {text:'随机三个砖块数字翻倍！',good:false},
-  {text:'弹球减少10个！',good:false},
-  {text:'弹球增加10个！',good:true},
-  {text:'随机三个砖块数字减半！',good:true},
-  {text:'一半球变为暴击球！',good:true},
-  {text:'全部球变为暴击球！',good:true},
-  {text:'获得1个钱坤一击！',good:true,item:'hammer',amount:1},
-  {text:'获得2个透视之眼！',good:true,item:'eye',amount:2},
-  {text:'获得1个透视之眼！',good:true,item:'eye',amount:1},
-  {text:'获得2个钱坤一击！',good:true,item:'hammer',amount:2},
-  {text:'获得20个金币！',good:true,gold:20},
-  {text:'获得50个金币！',good:true,gold:50},
-  {text:'下次复活免费',good:false,freeRevive:true},
-];
-
-// ──── Brick Generation ────
-function generateLayer(ln) {
-  const bricks=[];
-  const diff=Math.min(1+ln*0.15,4);
-  const rows=Math.min(6,2+Math.floor(ln/2));
-  const types=[
-    {k:'normal',w:55,minH:1,maxH:15},
-    {k:'gold',w:12,minH:1,maxH:4},
-    {k:'lucky',w:5,minH:1,maxH:3},
-    {k:'move',w:8,minH:2,maxH:10},
-    {k:'double',w:8,minH:2,maxH:8},
-    {k:'mystery',w:7,minH:1,maxH:12},
-    {k:'strip',w:3,minH:3,maxH:20},
-    {k:'tri',w:2,minH:2,maxH:10},
-  ];
-
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<COLS;c++){
-      const t=weightedPick(types,'w');
-      let hits=rng(t.minH,Math.min(t.maxH,Math.floor(t.maxH*diff)));
-      if(t.k==='lucky')hits=1;
-      if(t.k==='gold')hits=rng(1,Math.min(3,Math.floor(3*diff)));
-      let triDir=null;
-      if(t.k==='tri')triDir=pick(['upl','upr','lowl','lowr']);
-      bricks.push({
-        id:Date.now()+Math.random(),row:r,col:c,
-        type:t.k,triDir,hits,maxHits:hits,visible:true,
-        hidden:(t.k==='mystery'),moveTimer:(t.k==='move'?rng(60,180):0),
-      });
-    }
-  }
-  return bricks;
-}
-
-// ──── Canvas Setup ────
-const cvs=document.getElementById('cvs');
-const ctx=cvs.getContext('2d');
-let cw,ch,brickW,brickH,brickGap,boardTop,boardBottom,boardLeft,boardRight;
-
+// ──── Canvas ────
+const cvs=document.getElementById('cvs'),ctx=cvs.getContext('2d');
+let W,H,S=1;
+let boardL,boardR,boardT,boardB,brickW,brickH,brickG;
 function resize(){
-  const wrap=document.getElementById('cvs-wrap');
-  cw=wrap.clientWidth;ch=wrap.clientHeight;
+  const w=cvs.parentElement.clientWidth,h=cvs.parentElement.clientHeight;
   const dpr=Math.min(window.devicePixelRatio||1,2);
-  cvs.width=cw*dpr;cvs.height=ch*dpr;
-  ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr);
-  boardLeft=10;boardRight=cw-10;boardTop=10;boardBottom=ch-140;
-  brickGap=3;
-  brickW=(boardRight-boardLeft-(COLS-1)*brickGap)/COLS;
-  brickH=Math.min(brickW*0.75,(boardBottom-boardTop)/13);
+  cvs.width=w*dpr;cvs.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  W=w;H=h;S=Math.min(W/540,H/900);
+  boardL=40*S;boardR=W-40*S;boardT=120*S;boardB=H-160*S;
+  brickG=6*S;brickW=(boardR-boardL-(COLS-1)*brickG)/COLS;brickH=brickW*0.8;
 }
 window.addEventListener('resize',resize);
 
 // ──── Input ────
-function getPos(e){const r=cvs.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+function getP(e){const r=cvs.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
 cvs.addEventListener('pointerdown',e=>{
-  if(G.phase!=='playing')return;
-  if(G.hammerMode){const b=hitTestBrick(getPos(e));if(b)hammerHit(b);return;}
-  G.aimStart=getPos(e);G.aimCurrent=G.aimStart;
+  if(G.phase!=='play')return;
+  if(G.hammerOn){const b=hitBrick(getP(e));if(b)doHammer(b);return;}
+  G.aimStart=getP(e);G.aimCurrent=G.aimStart;
 });
 cvs.addEventListener('pointermove',e=>{
-  if(G.phase!=='playing'||!G.aimStart||G.launching)return;
-  G.aimCurrent=getPos(e);
-  if(G.aimCurrent.y>G.aimStart.y)G.aimCurrent.y=G.aimStart.y;
+  if(G.phase!=='play'||!G.aimStart||G.launching)return;
+  const p=getP(e);G.aimCurrent={x:p.x,y:Math.min(p.y,G.aimStart.y)};
 });
-cvs.addEventListener('pointerup',e=>{
-  if(G.phase!=='playing'||!G.aimStart||!G.aimCurrent||G.launching)return;
+cvs.addEventListener('pointerup',()=>{
+  if(G.phase!=='play'||!G.aimStart||!G.aimCurrent||G.launching)return;
   const dx=G.aimStart.x-G.aimCurrent.x,dy=G.aimStart.y-G.aimCurrent.y;
-  const power=Math.min(Math.hypot(dx,dy)/5,18);
-  const angle=Math.atan2(dy,dx);
-  if(power>2&&dy>5)launchBall(angle,power);
-  G.aimStart=null;G.aimCurrent=null;
+  const pow=Math.min(Math.hypot(dx,dy)/5,20),ang=Math.atan2(dy,dx);
+  if(pow>2&&dy>5)shoot(ang,pow);
+  G.aimStart=G.aimCurrent=null;
 });
 
-// ──── Ball Physics ────
-function spawnBall(angle,power,isCrit){
-  const sx=cw/2,sy=boardBottom+30;
-  return {x:sx,y:sy,vx:Math.cos(angle)*power,vy:Math.sin(angle)*power, r:brickW*0.2,active:true,isCrit,trail:[],bounced:0};
+// ──── Balls ────
+function shoot(ang,pow){
+  if(G.ballCnt<=0)return;
+  G.balls.push({x:W/2,y:boardB+20*S,vx:Math.cos(ang)*pow,vy:Math.sin(ang)*pow,r:brickW*0.22,alive:true,crit:G.ballLaunched<getCrit(),trail:[]});
+  G.ballCnt--;G.ballLaunched++;
 }
-function launchBall(angle,power){
-  if(G.ballsInRound<=0)return;
-  G.balls.push(spawnBall(angle,power,G.totalBallsLaunched<getCritCount()));
-  G.ballsInRound--;G.totalBallsLaunched++;
+function shootAll(){
+  if(G.phase!=='play'||G.ballCnt<=0||G.launching)return;
+  G.launching=true;const n=G.ballCnt,sp=Math.PI*0.45;
+  for(let i=0;i<n;i++)setTimeout(()=>{const f=n>1?i/(n-1):0.5;shoot(-Math.PI/2-sp/2+sp*f,11+Math.random()*3);if(i===n-1)G.launching=false;},i*25);
 }
-function launchAll(){
-  if(G.phase!=='playing'||G.ballsInRound<=0)return;
-  G.launching=true;
-  const cnt=G.ballsInRound,spread=Math.PI*0.4;
-  for(let i=0;i<cnt;i++)setTimeout(()=>{
-    const f=cnt>1?i/(cnt-1):0.5;
-    launchBall(-Math.PI/2-spread/2+spread*f,10+Math.random()*4);
-  },i*30);
-  setTimeout(()=>{G.launching=false;},cnt*30+100);
+function recall(){
+  if(G.phase!=='play')return;
+  const n=G.balls.filter(b=>b.alive).length;if(!n)return;
+  G.balls.forEach(b=>b.alive=false);G.balls=[];G.ballCnt+=n;G.ballLaunched=Math.max(0,G.ballLaunched-n);
+  toast('⬇️ 收回 '+n+' 球');
 }
-function recallAll(){
-  if(G.phase!=='playing')return;
-  const cnt=G.balls.filter(b=>b.active).length;
-  if(cnt===0){showToast('没有球在场上了','warn');return;}
-  G.balls.forEach(b=>b.active=false);
-  G.balls=[];G.ballsInRound+=cnt;
-  G.totalBallsLaunched=Math.max(0,G.totalBallsLaunched-cnt);
-  showToast('⬇️ 收回了 '+cnt+' 颗弹球','');updateUI();
-}
-function toggleSpeed(){
-  const spds=[1,2,4,8];const cur=spds.indexOf(G.speedMultiplier);
-  G.speedMultiplier=spds[(cur+1)%spds.length];
-  document.getElementById('btn-speed').textContent='⏩'+G.speedMultiplier+'×';
-  showToast('⏩ 速度：'+G.speedMultiplier+'×',G.speedMultiplier>=4?'warn':'');
-}
-function getCritCount(){
-  const s=ROLES[G.activeRole].skill;
-  if(s==='crit5')return 5;if(s==='crit10')return 10;return 0;
+function getCrit(){const s=ROLES[G.role].skill;if(s==='crit5')return 5;if(s==='crit10')return 10;return 0;}
+
+// ──── Bricks ────
+function genLayer(ln){
+  const bks=[],diff=Math.min(1+ln*0.12,3.5),rows=Math.min(MAX_ROWS,2+Math.floor(ln/2));
+  const types=[{k:'normal',w:50},{k:'gold',w:12},{k:'lucky',w:5},{k:'move',w:8},{k:'dbl',w:7},{k:'myst',w:8},{k:'strip',w:5},{k:'tri',w:5}];
+  let tw=0;types.forEach(t=>tw+=t.w);
+  for(let r=0;r<rows;r++)for(let c=0;c<COLS;c++){
+    let rv=Math.random()*tw;let tk=types[0];
+    for(const t of types){rv-=t.w;if(rv<=0){tk=t;break;}}
+    let hits=1;const mx=Math.floor(tk.k==='gold'?3*diff:tk.k==='lucky'?1:12*diff);
+    if(tk.k==='lucky')hits=1;else if(tk.k==='gold')hits=1+Math.floor(Math.random()*Math.min(3,Math.floor(3*diff)));
+    else if(tk.k==='dbl')hits=2+Math.floor(Math.random()*Math.min(8,Math.floor(6*diff)));
+    else if(tk.k==='strip')hits=3+Math.floor(Math.random()*Math.min(17,Math.floor(10*diff)));
+    else hits=1+Math.floor(Math.random()*mx);
+    let td=null;if(tk.k==='tri')td=['upl','upr','lowl','lowr'][Math.floor(Math.random()*4)];
+    bks.push({id:Math.random(),row:r,col:c,type:tk.k,triDir:td,hits,maxHits:hits,vis:true,hidden:tk.k==='myst',mvTimer:tk.k==='move'?60+Math.floor(Math.random()*120):0});
+  }
+  return bks;
 }
 
 // ──── Collision ────
-function rectCircle(rx,ry,rw,rh,cx,cy,cr){
-  const cx2=Math.max(rx,Math.min(cx,rx+rw)),cy2=Math.max(ry,Math.min(cy,ry+rh));
-  return(cx-cx2)**2+(cy-cy2)**2<cr**2;
-}
-function getBrickRect(b){
-  const x=boardLeft+b.col*(brickW+brickGap),y=boardTop+b.row*(brickH+brickGap);
-  return{x,y,w:brickW,h:brickH};
-}
-function hitTestBrick(pos){
-  for(const b of G.bricks){if(!b.visible)continue;const r=getBrickRect(b);if(pos.x>=r.x&&pos.x<=r.x+r.w&&pos.y>=r.y&&pos.y<=r.y+r.h)return b;}
-  return null;
-}
-function brickAt(row,col){return G.bricks.find(b=>b.visible&&b.row===row&&b.col===col);}
+function rcRect(rx,ry,rw,rh,cx,cy,cr){const cx2=Math.max(rx,Math.min(cx,rx+rw)),cy2=Math.max(ry,Math.min(cy,ry+rh));return(cx-cx2)**2+(cy-cy2)**2<cr**2;}
+function brRect(b){return{x:boardL+b.col*(brickW+brickG),y:boardT+b.row*(brickH+brickG),w:brickW,h:brickH};}
+function hitBrick(p){for(const b of G.bricks)if(b.vis){const r=brRect(b);if(p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h)return b;}return null;}
 
 // ──── Game Loop ────
-function hitBrick(brick,ball){
-  const dmg=ball.isCrit?2:1;brick.hits-=dmg;G.combo++;
-  const r=getBrickRect(brick);
-  for(let i=0;i<6;i++)G.particles.push({x:r.x+r.w/2,y:r.y+r.h/2,vx:rngF(-3,3),vy:rngF(-4,-1),life:rng(10,25),color:ball.isCrit?'#ff4757':'#ffd700',size:rng(1,3)});
-  if(brick.hits<=0)destroyBrick(brick);
+function hitB(brick,ball){
+  const dmg=ball.crit?2:1;brick.hits-=dmg;G.combo++;
+  const r=brRect(brick);
+  for(let i=0;i<8;i++)G.parts.push({x:r.x+r.w/2,y:r.y+r.h/2,vx:(Math.random()-0.5)*6,vy:(Math.random()-0.5)*6-2,life:15+Math.random()*15,color:ball.crit?'#ff0':'#fff',sz:1+Math.random()*3});
+  if(brick.hits<=0)destroyB(brick);
 }
-function destroyBrick(brick){
-  brick.visible=false;const r=getBrickRect(brick),role=ROLES[G.activeRole];
-  let g=BRICK_TYPES[brick.type]?.isGold?rng(3,8):1;
-  if(role.skill==='doubleGold')g*=2;if(role.skill==='tripleGold')g*=3;
-  G.gold+=g;G.score+=(brick.maxHits||1)*10;
-  for(let i=0;i<12;i++)G.particles.push({x:r.x+r.w/2,y:r.y+r.h/2,vx:rngF(-4,4),vy:rngF(-5,-1),life:rng(15,35),color:brick.type==='gold'?'#ffd700':brick.type==='lucky'?'#00ff88':'#7c5cfc',size:rng(2,5)});
-  if(brick.type==='lucky')G.luckyPending=true;
+function destroyB(brick){
+  brick.vis=false;const r=brRect(brick),role=ROLES[G.role];let g=brick.type==='gold'?3+Math.floor(Math.random()*6):1;
+  if(role.skill==='dblG')g*=2;if(role.skill==='tripG')g*=3;G.gold+=g;G.score+=(brick.maxHits||1)*10;
+  for(let i=0;i<15;i++)G.parts.push({x:r.x+r.w/2,y:r.y+r.h/2,vx:(Math.random()-0.5)*8,vy:(Math.random()-0.5)*8-3,life:20+Math.random()*20,color:brick.type==='gold'?'#ffd700':brick.type==='lucky'?'#0f0':'#7c5cfc',sz:2+Math.random()*4});
+  if(brick.type==='lucky')G.luckyP=true;
 }
-const BRICK_TYPES={normal:{},gold:{isGold:true},lucky:{isLucky:true},move:{},double:{},mystery:{},strip:{},tri:{}};
-
 function update(){
-  if(G.phase!=='playing')return;
-  const spd=G.speedMultiplier||1;
-  for(const ball of G.balls){
-    if(!ball.active)continue;
-    ball.trail.push({x:ball.x,y:ball.y});if(ball.trail.length>8)ball.trail.shift();
-    ball.x+=ball.vx*spd;ball.y+=ball.vy*spd;
-    if(ball.x-ball.r<boardLeft){ball.x=boardLeft+ball.r;ball.vx=Math.abs(ball.vx);}
-    if(ball.x+ball.r>boardRight){ball.x=boardRight-ball.r;ball.vx=-Math.abs(ball.vx);}
-    if(ball.y-ball.r<boardTop){ball.y=boardTop+ball.r;ball.vy=Math.abs(ball.vy);}
-    if(ball.y-ball.r>boardBottom+80){ball.active=false;G.roundBallsLost=G.roundBallsLost||0;G.roundBallsLost++;continue;}
-    for(const brick of G.bricks){
-      if(!brick.visible)continue;
-      const rr=getBrickRect(brick);
-      if(rectCircle(rr.x,rr.y,rr.w,rr.h,ball.x,ball.y,ball.r)){
-        const cx=rr.x+rr.w/2,cy=rr.y+rr.h/2,dx=ball.x-cx,dy=ball.y-cy;
-        if(Math.abs(dx)*rr.h>Math.abs(dy)*rr.w)ball.vx=Math.abs(ball.vx)*(dx>0?1:-1);
-        else ball.vy=Math.abs(ball.vy)*(dy>0?1:-1);
-        if(ball.vy>0)ball.y=rr.y-ball.r;else ball.y=rr.y+rr.h+ball.r;
-        if(ball.vx>0)ball.x=rr.x-ball.r;else ball.x=rr.x+rr.w+ball.r;
-        hitBrick(brick,ball);break;
+  if(G.phase!=='play')return;
+  const sp=G.speedMul;G.animTick++;
+  for(const b of G.balls){
+    if(!b.alive)continue;
+    b.trail.push({x:b.x,y:b.y});if(b.trail.length>6)b.trail.shift();
+    b.x+=b.vx*sp;b.y+=b.vy*sp;
+    if(b.x-b.r<boardL){b.x=boardL+b.r;b.vx=Math.abs(b.vx);}
+    if(b.x+b.r>boardR){b.x=boardR-b.r;b.vx=-Math.abs(b.vx);}
+    if(b.y-b.r<boardT){b.y=boardT+b.r;b.vy=Math.abs(b.vy);}
+    if(b.y>boardB+100*S){b.alive=false;continue;}
+    for(const bk of G.bricks){
+      if(!bk.vis)continue;
+      const rr=brRect(bk);
+      if(rcRect(rr.x,rr.y,rr.w,rr.h,b.x,b.y,b.r)){
+        const cx=rr.x+rr.w/2,cy=rr.y+rr.h/2,dx=b.x-cx,dy=b.y-cy;
+        if(Math.abs(dx)*rr.h>Math.abs(dy)*rr.w)b.vx=Math.abs(b.vx)*(dx>0?1:-1);
+        else b.vy=Math.abs(b.vy)*(dy>0?1:-1);
+        if(b.vy>0)b.y=rr.y-b.r;else b.y=rr.y+rr.h+b.r;
+        if(b.vx>0)b.x=rr.x-b.r;else b.x=rr.x+rr.w+b.r;
+        hitB(bk,b);break;
       }
     }
-    const speed=Math.hypot(ball.vx,ball.vy);
-    if(speed>20){ball.vx*=20/speed;ball.vy*=20/speed;}
-    if(speed<3){ball.vx*=3/speed;ball.vy*=3/speed;}
+    const s=Math.hypot(b.vx,b.vy);if(s>22){b.vx*=22/s;b.vy*=22/s;}if(s<3){b.vx*=3/s;b.vy*=3/s;}
   }
-  G.balls=G.balls.filter(b=>b.active);
-  for(const b of G.bricks){
-    if(!b.visible||!b.moveTimer)continue;
-    b.moveTimer--;if(b.moveTimer<=0){const d=rng(0,1)?1:-1;const nc=b.col+d;if(nc>=0&&nc<COLS&&!brickAt(b.row,nc))b.col=nc;b.moveTimer=rng(60,180);}
-  }
-  for(const p of G.particles){p.x+=p.vx;p.y+=p.vy;p.life--;p.vy+=0.1;}
-  G.particles=G.particles.filter(p=>p.life>0);
-  if(G.balls.length===0&&G.ballsInRound<=0&&!G.launching)checkRoundEnd();
+  G.balls=G.balls.filter(b=>b.alive);
+  for(const bk of G.bricks){if(!bk.vis||!bk.mvTimer)continue;bk.mvTimer--;if(bk.mvTimer<=0){const d=Math.random()>.5?1:-1,nc=bk.col+d;if(nc>=0&&nc<COLS&&!G.bricks.find(b=>b.vis&&b.row===bk.row&&b.col===nc))bk.col=nc;bk.mvTimer=60+Math.floor(Math.random()*120);}}
+  for(const p of G.parts){p.x+=p.vx;p.y+=p.vy;p.life--;p.vy+=0.1;}
+  G.parts=G.parts.filter(p=>p.life>0);
+  if(!G.balls.length&&G.ballCnt<=0&&!G.launching)checkEnd();
 }
-
-function checkRoundEnd(){
-  const vis=G.bricks.filter(b=>b.visible);
-  if(vis.length===0){
-    G.layer++;if(G.layer>G.maxLayer)G.maxLayer=G.layer;
-    if(G.score>G.maxScore)G.maxScore=G.score;
-    G.combo=0;G.ballsInRound+=3+Math.floor(G.layer/5);
-    if(G.luckyPending||G.layer%3===0)G.luckyPending=true;
-    showToast('🎉 第'+(G.layer-1)+'层清除！','');
-    if(G.luckyPending){showWheel();}else nextLayer();
-    save();
-  }else if(G.ballsInRound<=0){gameOver();}
+function checkEnd(){
+  const vis=G.bricks.filter(b=>b.vis);
+  if(!vis.length){G.layer++;if(G.layer>G.maxLayer)G.maxLayer=G.layer;if(G.score>G.maxScore)G.maxScore=G.score;G.combo=0;G.ballCnt+=3+Math.floor(G.layer/5);G.phase='layerDone';setTimeout(()=>{if(G.luckyP||G.layer%3===0){G.luckyP=true;showWheel();}else nextLayer();},500);save();}
+  else if(G.ballCnt<=0)gameOver();
 }
-function gameOver(){
-  G.phase='gameover';if(G.score>G.maxScore)G.maxScore=G.score;if(G.layer>G.maxLayer)G.maxLayer=G.layer;
-  save();showGameOver();
-}
-function nextLayer(){
-  G.bricks=generateLayer(G.layer);
-  const role=ROLES[G.activeRole];let base=8+Math.floor(G.layer/3);
-  if(role.skill==='plus5')base+=5;if(role.skill==='plus10')base+=10;
-  G.ballsInRound=Math.min(base,50);G.totalBallsLaunched=0;
-  G.balls=[];G.combo=0;G.eyeActive=false;G.luckyPending=false;G.phase='playing';updateUI();
-}
-function revive(){
-  G.phase='playing';const role=ROLES[G.activeRole];let base=6+Math.floor(G.layer/4);
-  if(role.skill==='plus5')base+=5;if(role.skill==='plus10')base+=10;
-  G.ballsInRound=Math.min(Math.max(base,5),50);G.totalBallsLaunched=0;
-  G.balls=[];G.combo=0;updateUI();
-}
+function gameOver(){G.phase='over';if(G.score>G.maxScore)G.maxScore=G.score;if(G.layer>G.maxLayer)G.maxLayer=G.layer;save();}
+function nextLayer(){G.bricks=genLayer(G.layer);const r=ROLES[G.role];let base=8+Math.floor(G.layer/3);if(r.skill==='plus5')base+=5;if(r.skill==='plus10')base+=10;G.ballCnt=Math.min(base,50);G.ballLaunched=0;G.balls=[];G.combo=0;G.eyeOn=false;G.luckyP=false;G.phase='play';}
+function revive(){G.phase='play';const r=ROLES[G.role];let base=6+Math.floor(G.layer/4);if(r.skill==='plus5')base+=5;if(r.skill==='plus10')base+=10;G.ballCnt=Math.min(Math.max(base,5),50);G.ballLaunched=0;G.balls=[];G.combo=0;G.revives--;}
 
 // ──── Items ────
-function useHammer(){
-  if(G.phase!=='playing')return;
-  if(G.hammerCount<=0){showToast('💰 没有钱坤一击！','warn');return;}
-  if(G.hammerMode){G.hammerMode=false;updateUI();return;}
-  G.hammerMode=true;showToast('🔨 点击砖块消除！','');
-}
-function hammerHit(brick){
-  G.hammerMode=false;G.hammerCount--;brick.hits=0;destroyBrick(brick);
-  showToast('💥 钱坤一击！','');updateUI();
-  setTimeout(()=>{if(G.bricks.filter(b=>b.visible).length===0)checkRoundEnd();},300);
-}
-function useEye(){
-  if(G.phase!=='playing')return;
-  if(G.eyeCount<=0){showToast('💰 没有透视之眼！','warn');return;}
-  G.eyeCount--;G.eyeActive=true;showToast('👁️ 已显示隐藏数字！','');updateUI();
-}
+function useHammer(){if(G.phase!=='play')return;if(G.hammer<=0){toast('无钱坤一击');return;}G.hammerOn=!G.hammerOn;if(G.hammerOn)toast('🔨 点击砖块');}
+function doHammer(b){G.hammerOn=false;G.hammer--;b.hits=0;destroyB(b);setTimeout(()=>{if(!G.bricks.filter(b=>b.vis).length)checkEnd();},300);}
+function useEye(){if(G.phase!=='play')return;if(G.eye<=0){toast('无透视之眼');return;}G.eye--;G.eyeOn=true;toast('👁️ 已显示');}
 
-// ──── Lucky Wheel ────
-function spinWheel(){
-  if(G.phase!=='playing')return;
-  if(G.wheelSpins>=2&&G.gold<30){showToast('💰 需30金币','warn');return;}
-  if(G.wheelSpins>=2)G.gold-=30;G.wheelSpins++;
-  G.luckyPending=true;showWheel();
+// ──── Wheel ────
+const LCK=[
+  {t:'换弹球',g:true},{t:'空包',g:false},{t:'隐藏数字!',g:false},{t:'层数+1!',g:false},
+  {t:'3砖翻倍!',g:false},{t:'-10球!',g:false},{t:'+10球!',g:true},{t:'3砖减半!',g:true},
+  {t:'半数暴击!',g:true},{t:'全暴击!',g:true},{t:'+1钱坤',g:true,it:'h',n:1},{t:'+2透视',g:true,it:'e',n:2},
+  {t:'+1透视',g:true,it:'e',n:1},{t:'+2钱坤',g:true,it:'h',n:2},{t:'+20金币',g:true,gd:20},{t:'+50金币',g:true,gd:50},{t:'免费复活',g:false,rv:true},
+];
+function spinWheel(){if(G.phase!=='play')return;if(G.spins>=2&&G.gold<30){toast('需30金币');return;}if(G.spins>=2)G.gold-=30;G.spins++;G.luckyP=true;showWheel();}
+function showWheel(){G.phase='wheel';G.luckyR=LCK[Math.floor(Math.random()*LCK.length)];}
+function applyLucky(){const r=G.luckyR;if(!r){closeMsg();nextLayer();return;}
+  if(r.it==='h')G.hammer+=r.n;if(r.it==='e')G.eye+=r.n;if(r.gd)G.gold+=r.gd;
+  if(r.t.includes('-10球'))G.ballCnt=Math.max(1,G.ballCnt-10);
+  if(r.t.includes('+10球'))G.ballCnt+=10;
+  if(r.t.includes('全暴击'))G.ballLaunched=999;
+  if(r.t.includes('半数暴击'))for(let i=0;i<G.balls.length/2;i++)G.balls[i].crit=true;
+  if(r.t.includes('隐藏数字'))G.bricks.forEach(b=>b.hidden=true);
+  if(r.t.includes('翻倍')){const t=G.bricks.filter(b=>b.vis).sort(()=>Math.random()-.5).slice(0,3);t.forEach(b=>{b.hits*=2;b.maxHits*=2;});}
+  if(r.t.includes('减半')){const t=G.bricks.filter(b=>b.vis).sort(()=>Math.random()-.5).slice(0,3);t.forEach(b=>b.hits=Math.max(1,Math.floor(b.hits/2)));}
+  if(r.t.includes('层数+1'))G.layer++;
+  if(r.t.includes('换弹球'))G.ballId=Object.values(BALL_TYPES).find(b=>G.unlock.balls.includes(b.id))?.id||101;
+  closeMsg();nextLayer();
 }
-function showWheel(){
-  G.phase='wheel';G.luckyResult=pick(LUCKY_RESULTS);
-  const r=G.luckyResult,c=r.good?'var(--green)':'var(--pink)';
-  let extra='';
-  if(r.item==='hammer')extra='<p style="font-size:0.8rem;color:var(--text-dim);">🔨 +'+r.amount+' 个钱坤一击</p>';
-  if(r.item==='eye')extra='<p style="font-size:0.8rem;color:var(--text-dim);">👁️ +'+r.amount+' 个透视之眼</p>';
-  if(r.gold)extra='<p style="font-size:0.8rem;color:var(--gold);">💰 +'+r.gold+' 金币</p>';
-  showModal('<h2>🎰 幸运轮盘</h2><div style="text-align:center;font-size:4rem;margin:10px;">🎡</div><div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center;border-left:4px solid '+c+';margin:8px 0;"><b>'+r.text+'</b>'+extra+'</div><div class="acts"><button class="btn-p" onclick="applyLucky()">✓ 确定</button></div>');
-}
-function applyLucky(){
-  const r=G.luckyResult;if(!r){closeModal();nextLayer();return;}
-  if(r.item==='hammer')G.hammerCount+=r.amount;
-  if(r.item==='eye')G.eyeCount+=r.amount;
-  if(r.gold)G.gold+=r.gold;
-  if(r.text.includes('减少10个'))G.ballsInRound=Math.max(1,G.ballsInRound-10);
-  if(r.text.includes('增加10个'))G.ballsInRound+=10;
-  if(r.text.includes('全部球变为暴击球'))G.totalBallsLaunched=999;
-  if(r.text.includes('一半球变为暴击球'))for(let i=0;i<G.balls.length/2;i++)G.balls[i].isCrit=true;
-  if(r.text.includes('数字隐藏'))for(const b of G.bricks)b.hidden=true;
-  if(r.text.includes('数字翻倍')){const t=G.bricks.filter(b=>b.visible).sort(()=>Math.random()-0.5).slice(0,3);t.forEach(b=>{b.hits*=2;b.maxHits*=2;});}
-  if(r.text.includes('数字减半')){const t=G.bricks.filter(b=>b.visible).sort(()=>Math.random()-0.5).slice(0,3);t.forEach(b=>b.hits=Math.max(1,Math.floor(b.hits/2)));}
-  if(r.text.includes('层数+1'))G.layer++;
-  if(r.text.includes('随机换一种弹球'))G.activeBall=pick(BALLS.filter(b=>G.unlocks.balls.includes(b.id))).id;
-  closeModal();nextLayer();
-}
-
-// ──── Modals ────
-function showModal(html){
-  closeModal();
-  const o=document.createElement('div');o.className='modal-overlay';o.id='modal-overlay';
-  o.innerHTML='<div class="modal">'+html+'</div>';document.body.appendChild(o);
-  o.addEventListener('click',e=>{if(e.target===o)closeModal();});
-}
-function closeModal(){const m=document.getElementById('modal-overlay');if(m)m.remove();}
-function showToast(msg,type){
-  const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(type||'');
-  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2000);
-}
-function showGameOver(){
-  showModal('<h2>💀 挑战失败</h2><div style="text-align:center;font-size:3rem;margin:8px;">😵</div><div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center;"><div style="display:flex;justify-content:space-around;margin-bottom:6px;"><div><div style="font-size:1.3rem;font-weight:800;">'+G.layer+'</div><div style="font-size:0.7rem;color:var(--text-dim);">层数</div></div><div><div style="font-size:1.3rem;font-weight:800;">'+G.gold+'</div><div style="font-size:0.7rem;color:var(--text-dim);">金币</div></div><div><div style="font-size:1.3rem;font-weight:800;">'+G.score+'</div><div style="font-size:0.7rem;color:var(--text-dim);">得分</div></div></div><div style="font-size:0.7rem;color:var(--text-dim);">最高：层'+G.maxLayer+' / '+G.maxScore+'分</div></div><div class="acts"><button class="btn-p" onclick="revive();closeModal();">🔄 复活</button><button onclick="restartGame();closeModal();">🔁 重来</button><button onclick="goMenu();closeModal();">🏠 菜单</button></div>');
-}
-function showShop(){
-  showModal('<h2>🏪 道具商店</h2><p style="text-align:center;font-size:0.8rem;color:var(--text-dim);">💰 '+G.gold+' 金币</p><div style="background:var(--surface2);border-radius:10px;padding:10px;margin:6px 0;display:flex;align-items:center;justify-content:space-between;"><div><span style="font-size:1.5rem;">🔨</span> <b>钱坤一击</b><br><small style="color:var(--text-dim);">消除任意砖块</small></div><button class="btn-g" onclick="buyItem(\'hammerCount\',20)">💰20</button></div><div style="background:var(--surface2);border-radius:10px;padding:10px;margin:6px 0;display:flex;align-items:center;justify-content:space-between;"><div><span style="font-size:1.5rem;">👁️</span> <b>透视之眼</b><br><small style="color:var(--text-dim);">显示隐藏数字</small></div><button class="btn-g" onclick="buyItem(\'eyeCount\',15)">💰15</button></div><div class="acts"><button onclick="closeModal()">关闭</button></div>');
-}
-function buyItem(field,cost){if(G.gold<cost){showToast('💰 金币不足！','warn');return;}G.gold-=cost;G[field]++;showToast('✅ 购买成功！','');save();closeModal();updateUI();}
-function showRoleSelect(){
-  showModal('<h2>👤 角色</h2><div class="sel-grid">'+ROLES.map(r=>{const u=G.unlocks.roles.includes(r.id),on=G.activeRole===r.id;return'<div class="sel-card'+(on?' on':'')+(u?'':' lock')+'" onclick="'+(u?'selectRole('+r.id+')':'unlockRole('+r.id+')')+'"><span class="em">'+r.emoji+'</span><div>'+r.name+'</div><div style="font-size:0.65rem;color:var(--text-dim);">'+r.desc+'</div>'+(on?'<div style="color:var(--green);font-size:0.6rem;">✅</div>':'')+'</div>';}).join('')+'</div><div class="acts"><button onclick="closeModal()">关闭</button></div>');
-}
-function selectRole(id){G.activeRole=id;save();closeModal();}
-function unlockRole(id){const r=ROLES[id];if(G.gold>=r.cost){G.gold-=r.cost;G.unlocks.roles.push(id);save();showToast('✅ 解锁：'+r.name,'');closeModal();}else{showToast('💰 需'+r.cost+'金币','warn');}}
-function showBallSelect(){
-  showModal('<h2>⚽ 弹球</h2><div class="sel-grid">'+BALLS.map(b=>{const u=G.unlocks.balls.includes(b.id),on=G.activeBall===b.id;return'<div class="sel-card'+(on?' on':'')+(u?'':' lock')+'" onclick="'+(u?'selectBall('+b.id+')':'unlockBall('+b.id+')')+'"><span class="em" style="color:'+b.color+'">●</span><div style="font-size:0.7rem;">'+b.name+'</div>'+'</div>';}).join('')+'</div><div class="acts"><button onclick="closeModal()">关闭</button></div>');
-}
-function selectBall(id){G.activeBall=id;save();closeModal();}
-function unlockBall(id){const cost=50+(id-101)*10;if(G.gold>=cost){G.gold-=cost;G.unlocks.balls.push(id);save();G.activeBall=id;showToast('✅ 解锁！','');closeModal();}else{showToast('💰 需'+cost+'金币','warn');}}
-
-// ──── Menu ────
-function showMenu(){
-  G.phase='menu';
-  showModal('<h2>🎱 波沐弹球</h2><p style="text-align:center;font-size:0.75rem;color:var(--text-dim);">Bomu Pinball · 波沐游戏出品</p><div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center;margin:10px 0;"><div style="display:flex;justify-content:space-around;font-size:0.78rem;"><div>🏆层<b>'+G.maxLayer+'</b></div><div>⭐<b>'+G.maxScore+'</b></div><div>💰<b>'+G.gold+'</b></div></div></div><div style="display:flex;flex-direction:column;gap:6px;"><button class="btn-p" onclick="startRound();closeModal();">▶️ 开始游戏</button><button onclick="closeModal();showRoleSelect();">👤 角色</button><button onclick="closeModal();showBallSelect();">⚽ 弹球</button><button class="btn-g" onclick="closeModal();showShop();">🏪 商店</button></div><div class="acts"><button onclick="closeModal();goNav();">← 返回导航</button></div>');
-}
-function startRound(){
-  G.phase='playing';G.layer=1;G.score=0;G.combo=0;G.wheelSpins=0;G.luckyPending=false;G.hammerMode=false;G.eyeActive=false;
-  const role=ROLES[G.activeRole];let base=10;
-  if(role.skill==='plus5')base+=5;if(role.skill==='plus10')base+=10;
-  G.ballsInRound=base;G.totalBallsLaunched=0;G.balls=[];G.bricks=generateLayer(G.layer);updateUI();
-}
-function restartGame(){startRound();}
-function goMenu(){G.phase='menu';G.balls=[];G.hammerMode=false;updateUI();showMenu();}
-function goNav(){save();window.location.href='index.html';}
+function closeMsg(){const m=document.getElementById('msg');if(m)m.remove();}
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),1800);}
 
 // ──── Render ────
 function render(){
-  ctx.clearRect(0,0,cw,ch);
-  // BG
-  ctx.fillStyle='#0a0a18';ctx.fillRect(0,0,cw,ch);
-  ctx.fillStyle='rgba(20,20,40,0.5)';ctx.beginPath();ctx.roundRect(boardLeft-3,boardTop-3,boardRight-boardLeft+6,boardBottom-boardTop+6,6);ctx.fill();
-  ctx.strokeStyle='#282850';ctx.lineWidth=1;ctx.stroke();
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#0a0a18';ctx.fillRect(0,0,W,H);
 
-  // Bricks with real sprites
-  for(const brick of G.bricks){
-    if(!brick.visible)continue;
-    const r=getBrickRect(brick);
-    const showNum=G.eyeActive||!brick.hidden;
+  if(G.phase==='loading'){ctx.fillStyle='#fff';ctx.font='20px sans-serif';ctx.textAlign='center';ctx.fillText('加载中...',W/2,H/2);return;}
+  if(G.phase==='menu'){drawMenu();return;}
+  if(G.phase==='wheel'){drawGame();drawWheelMsg();return;}
+  if(G.phase==='over'){drawGame();drawOverMsg();return;}
 
-    // Choose sprite
-    let spriteKey='play_brick_normal.png';
-    let hitKey='play_brick_normal_hit.png';
-    const hitRatio=brick.hits/brick.maxHits;
-    const useHit=hitRatio<=0.5;
+  // Game scene
+  drawGame();
+  if(G.hammerOn){ctx.strokeStyle='#ffd700';ctx.lineWidth=3;ctx.setLineDash([8,4]);ctx.strokeRect(boardL-3,boardT-3,boardR-boardL+6,boardB-boardT+6);ctx.setLineDash([]);ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('🔨 点击砖块',W/2,boardT-10);}
+}
+function drawGame(){
+  // Background
+  const bgH=(boardB-boardT)*1.5;
+  if(IMG['game_obj']){
+    // Draw play_bg tiled or stretched
+    const f=getF('game_obj','play_bg.png');
+    if(f)ctx.drawImage(IMG['game_obj'],f.x,f.y,f.w,f.h,0,boardT-bgH*0.1,W,bgH*1.1);
+  }
+  // Board bg overlay
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(boardL-4,boardT-4,boardR-boardL+8,boardB-boardT+8);
 
-    switch(brick.type){
-      case'gold':spriteKey=useHit?'play_brick_gold_hit.png':'play_brick_gold.png';break;
-      case'lucky':spriteKey=useHit?'play_brick_lucky_hit.png':'play_brick_lucky_hit.png';break;
-      case'move':spriteKey=useHit?'play_brick_move_hit.png':'play_brick_move.png';break;
-      case'double':spriteKey=useHit?'play_brick_double_hit.png':'play_brick_double.png';break;
-      case'mystery':spriteKey=showNum?'play_brick_normal.png':'play_brick_lucky.png';break;
-      case'strip':spriteKey=useHit?'play_brick_strip_hit.png':'play_brick_strip.png';break;
-      case'tri':
-        switch(brick.triDir){
-          case'upl':spriteKey=useHit?'play_brick_triangle_upl_hit.png':'play_brick_triangle_upl.png';break;
-          case'upr':spriteKey=useHit?'play_brick_triangle_upr_hit.png':'play_brick_triangle_upr.png';break;
-          case'lowl':spriteKey=useHit?'play_brick_triangle_lowl_hit.png':'play_brick_triangle_lowl.png';break;
-          case'lowr':spriteKey=useHit?'play_brick_triangle_lowr_hit.png':'play_brick_triangle_lowr.png';break;
-        }break;
+  // Brick shadows
+  for(const b of G.bricks){
+    if(!b.vis)continue;
+    const r=brRect(b);
+    let shKey='play_brick_shadow_normal.png';
+    if(b.type==='strip')shKey='play_brick_shadow_strip.png';
+    else if(b.type==='tri'){
+      if(b.triDir==='lowl')shKey='play_brick_shadow_triangle_bl.png';
+      else if(b.triDir==='lowr')shKey='play_brick_shadow_triangle_br.png';
+      else if(b.triDir==='upl')shKey='play_brick_shadow_triangle_tl.png';
+      else if(b.triDir==='upr')shKey='play_brick_shadow_triangle_tr.png';
     }
+    drawS(ctx,'game_obj',shKey,r.x-8*S,r.y-8*S,r.w+16*S,r.h+16*S);
+  }
 
-    // Draw sprite
-    const f=getFrame('game_obj',spriteKey);
-    if(f){
-      // Scale sprite to fit brick cell
-      const pad=2;
-      ctx.drawImage(IMG['game_obj'],f.x,f.y,f.w,f.h,r.x+pad,r.y+pad,r.w-pad*2,r.h-pad*2);
-    } else {
-      // Fallback: colored rectangle
-      ctx.fillStyle='#3d3d60';ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,3);ctx.fill();
+  // Bricks
+  for(const b of G.bricks){
+    if(!b.vis)continue;
+    const r=brRect(b),hit=b.hits/b.maxHits<=0.5;
+    let key='play_brick_normal.png';
+    switch(b.type){
+      case'gold':key=hit?'play_brick_gold_hit.png':'play_brick_gold.png';break;
+      case'lucky':key='play_brick_lucky_hit.png';break;
+      case'move':key=hit?'play_brick_move_hit.png':'play_brick_move.png';break;
+      case'dbl':key=hit?'play_brick_double_hit.png':'play_brick_double.png';break;
+      case'strip':key=hit?'play_brick_strip_hit.png':'play_brick_strip.png';break;
+      case'myst':key=G.eyeOn||!b.hidden?(hit?'play_brick_normal_hit.png':'play_brick_normal.png'):'play_brick_lucky.png';break;
+      case'tri':key='play_brick_triangle_'+b.triDir+(hit?'_hit':'')+'.png';break;
+      default:key=hit?'play_brick_normal_hit.png':'play_brick_normal.png';
     }
+    const pad=2*S;drawS(ctx,'game_obj',key,r.x+pad,r.y+pad,r.w-pad*2,r.h-pad*2);
+    // Gold icon
+    if(b.type==='gold')drawS(ctx,'game_obj','play_brick_goldicon.png',r.x+r.w-14*S,r.y+2*S,12*S,12*S);
 
     // Number
-    if(showNum&&brick.hits>0){
-      ctx.fillStyle='rgba(0,0,0,0.6)';ctx.font='bold '+Math.max(11,brickH*0.42)+'px Inter,sans-serif';
-      ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(brick.hits,r.x+r.w/2+1,r.y+r.h/2+1);
-      ctx.fillStyle='#fff';ctx.fillText(brick.hits,r.x+r.w/2,r.y+r.h/2);
-    }else if(!showNum){
-      ctx.fillStyle='#fff';ctx.font='bold '+Math.max(12,brickH*0.48)+'px Inter,sans-serif';
-      ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('?',r.x+r.w/2,r.y+r.h/2);
+    const show=G.eyeOn||!b.hidden;
+    if(show&&b.hits>0){
+      const ns=b.hits.toString(),nw=ns.length*10*S;
+      for(let i=0;i<ns.length;i++){
+        const d=ns[i];
+        drawS(ctx,'public_ui','play_zksz_'+d+'.png',r.x+r.w/2-nw/2+i*10*S,r.y+r.h/2-8*S,10*S,16*S);
+      }
+    }else if(!show){
+      drawS(ctx,'public_ui','play_zksz_w.png',r.x+r.w/2-8*S,r.y+r.h/2-8*S,16*S,16*S);
     }
   }
 
-  // Launch area - draw floor
-  const lx=cw/2,ly=boardBottom+30;
-  if(!drawSprite(ctx,'game_obj','play_floor_ch.png',lx-40,ly-10,80,40)){
-    ctx.fillStyle='#3d3d60';ctx.beginPath();ctx.ellipse(lx,ly+10,35,12,0,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#7c5cfc';ctx.lineWidth=2;ctx.stroke();
-  }
+  // Floor
+  const flW=120*S,flH=60*S;
+  drawS(ctx,'game_obj','play_floor_ch.png',W/2-flW/2,boardB-10*S,flW,flH);
 
   // Aim line
-  if(G.aimStart&&G.aimCurrent&&G.phase==='playing'){
+  if(G.aimStart&&G.aimCurrent&&G.phase==='play'){
     const dx=G.aimStart.x-G.aimCurrent.x,dy=G.aimStart.y-G.aimCurrent.y;
-    const power=Math.min(Math.hypot(dx,dy)/5,18),angle=Math.atan2(dy,dx);
-    ctx.strokeStyle='rgba(124,92,252,0.6)';ctx.lineWidth=2;ctx.setLineDash([4,4]);
-    ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx+Math.cos(angle)*(120+power*15),ly+Math.sin(angle)*(120+power*15));ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.beginPath();ctx.arc(lx,ly,10+power*2,0,Math.PI*2);
-    ctx.strokeStyle='rgba('+Math.floor(255*power/18)+','+Math.floor(255*(1-power/18))+',92,0.8)';ctx.lineWidth=2;ctx.stroke();
+    const pow=Math.min(Math.hypot(dx,dy)/5,20),ang=Math.atan2(dy,dx);
+    ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1.5*S;ctx.setLineDash([6*S,4*S]);
+    ctx.beginPath();ctx.moveTo(W/2,boardB+10*S);ctx.lineTo(W/2+Math.cos(ang)*(120+pow*10)*S,boardB+10*S+Math.sin(ang)*(120+pow*10)*S);ctx.stroke();ctx.setLineDash([]);
+    // Power indicator
+    drawS(ctx,'game_obj','play_arrow.png',W/2-13*S,boardB-50*S-pow*3*S,26*S,30*S);
   }
 
   // Balls
-  for(const ball of G.balls){
-    if(!ball.active)continue;
+  for(const b of G.balls){
+    if(!b.alive)continue;
     // Trail
-    if(ball.trail.length>1){
-      ctx.strokeStyle=ball.isCrit?'rgba(255,71,87,0.3)':'rgba(255,255,255,0.12)';
-      ctx.lineWidth=ball.r;ctx.beginPath();ctx.moveTo(ball.trail[0].x,ball.trail[0].y);
-      for(let i=1;i<ball.trail.length;i++)ctx.lineTo(ball.trail[i].x,ball.trail[i].y);
-      ctx.lineTo(ball.x,ball.y);ctx.stroke();
+    if(b.trail.length>1){
+      ctx.strokeStyle=b.crit?'rgba(255,80,80,0.3)':'rgba(255,255,255,0.1)';
+      ctx.lineWidth=b.r;ctx.beginPath();ctx.moveTo(b.trail[0].x,b.trail[0].y);
+      for(let i=1;i<b.trail.length;i++)ctx.lineTo(b.trail[i].x,b.trail[i].y);ctx.lineTo(b.x,b.y);ctx.stroke();
     }
-    // Ball
-    const bd=BALLS.find(b=>b.id===G.activeBall)||BALLS[0];
-    ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
-    const grad=ctx.createRadialGradient(ball.x-ball.r*0.3,ball.y-ball.r*0.3,ball.r*0.1,ball.x,ball.y,ball.r);
-    grad.addColorStop(0,ball.isCrit?'#ff6b81':'#fff');grad.addColorStop(1,ball.isCrit?'#ff1744':bd.color);
-    ctx.fillStyle=grad;ctx.fill();
-    if(ball.isCrit){
-      ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r+3,0,Math.PI*2);
-      ctx.strokeStyle='#ff4757';ctx.lineWidth=1.5;ctx.globalAlpha=0.6+Math.sin(Date.now()/100)*0.4;ctx.stroke();ctx.globalAlpha=1;
+    // Ball sprite
+    const bt=Object.values(BALL_TYPES).find(x=>x.id===G.ballId)||BALL_TYPES.pingpong;
+    const bkey=bt.key?bt.key+'_normal.png':null;
+    const bcrit=bt.key?bt.key+'_crit.png':null;
+    const br=b.r*2.5;
+    let drawn=false;
+    if(b.crit&&bcrit)drawS(ctx,'public_obj',bcrit,b.x-br/2,b.y-br/2,br,br);
+    else if(bkey){drawn=drawS(ctx,'public_obj',bkey,b.x-br/2,b.y-br/2,br,br);}
+    if(!drawn){
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fillStyle=bt.color||'#fff';ctx.fill();
+    }
+    if(b.crit){
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r+3,0,Math.PI*2);ctx.strokeStyle='#ff4757';ctx.lineWidth=1.5;ctx.globalAlpha=0.5+Math.sin(Date.now()/80)*0.5;ctx.stroke();ctx.globalAlpha=1;
     }
   }
 
   // Particles
-  for(const p of G.particles){ctx.fillStyle=p.color;ctx.globalAlpha=p.life/35;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();}
-  ctx.globalAlpha=1;
+  for(const p of G.parts){ctx.fillStyle=p.color;ctx.globalAlpha=Math.min(1,p.life/30);ctx.beginPath();ctx.arc(p.x,p.y,p.sz,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;
 
-  // Hammer mode rect
-  if(G.hammerMode){
-    ctx.strokeStyle='#ffd700';ctx.lineWidth=3;ctx.setLineDash([8,4]);
-    ctx.strokeRect(boardLeft-2,boardTop-2,boardRight-boardLeft+4,boardBottom-boardTop+4);
-    ctx.setLineDash([]);ctx.fillStyle='#ffd700';ctx.font='bold 13px Inter';ctx.textAlign='center';ctx.fillText('🔨 点击砖块消除',cw/2,boardTop-10);
+  // Top UI bar
+  const barY=boardT-50*S;
+  ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,barY,W,45*S);
+  ctx.fillStyle='#fff';ctx.font=(12*S)+'px sans-serif';ctx.textAlign='left';
+  ctx.fillText('层'+G.layer,10*S,barY+28*S);
+  ctx.textAlign='center';ctx.fillText('球×'+(G.ballCnt+G.balls.filter(b=>b.alive).length),W/2,barY+28*S);
+  ctx.textAlign='right';ctx.fillText('💰'+G.gold,W-80*S,barY+28*S);
+  ctx.fillText('🔥×'+(G.combo||1),W-10*S,barY+28*S);
+
+  // Bottom controls
+  const by=H-40*S;
+  ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,by,W,40*S);
+  const btns=['🔨'+G.hammer,'👁️'+G.eye,'🎲','⏩'+G.speedMul+'×','⬇️'];
+  ctx.fillStyle='#fff';ctx.font=(11*S)+'px sans-serif';ctx.textAlign='center';
+  for(let i=0;i<btns.length;i++)ctx.fillText(btns[i],W/(btns.length+1)*(i+1),by+26*S);
+}
+function drawMenu(){
+  // Home bg
+  if(IMG['home_ui']){
+    const f=getF('home_ui','home_bg.png');
+    if(f)ctx.drawImage(IMG['home_ui'],f.x,f.y,f.w,f.h,0,0,W,H);
+  }
+  // Logo
+  drawS(ctx,'home_ui','home_logo_ch.png',W/2-120*S,30*S,240*S,80*S);
+  // Start button
+  drawS(ctx,'home_ui','home_button_start.png',W/2-100*S,H/2-20*S,200*S,60*S);
+  // Other buttons
+  drawS(ctx,'home_ui','home_button_role_a.png',W/2-140*S,H/2+60*S,80*S,40*S);
+  drawS(ctx,'home_ui','home_button_shop.png',W/2-40*S,H/2+60*S,80*S,40*S);
+  drawS(ctx,'home_ui','home_button_box.png',W/2+60*S,H/2+60*S,80*S,40*S);
+  // Title
+  ctx.fillStyle='#fff';ctx.font='bold '+(16*S)+'px sans-serif';ctx.textAlign='center';
+  ctx.fillText('波沐弹球',W/2,H/2+140*S);
+  ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font=(10*S)+'px sans-serif';
+  ctx.fillText('Bomu Pinball · 最高层'+G.maxLayer+' · 💰'+G.gold,W/2,H/2+160*S);
+}
+function drawWheelMsg(){
+  ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,W,H);
+  const r=G.luckyR;
+  ctx.fillStyle='#fff';ctx.font='bold '+(18*S)+'px sans-serif';ctx.textAlign='center';
+  ctx.fillText('🎰 幸运轮盘',W/2,H/2-60*S);
+  ctx.font=(14*S)+'px sans-serif';
+  ctx.fillText(r?r.t:'',W/2,H/2);
+  ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font=(11*S)+'px sans-serif';
+  ctx.fillText('点击屏幕继续',W/2,H/2+50*S);
+}
+function drawOverMsg(){
+  ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#fff';ctx.font='bold '+(20*S)+'px sans-serif';ctx.textAlign='center';
+  ctx.fillText('挑战失败',W/2,H/2-50*S);
+  ctx.font=(14*S)+'px sans-serif';
+  ctx.fillText('层数:'+G.layer+'  金币:'+G.gold+'  得分:'+G.score,W/2,H/2);
+  ctx.fillText('最高:层'+G.maxLayer+' / '+G.maxScore+'分',W/2,H/2+30*S);
+  ctx.fillText('🔄点击复活('+G.revives+') | 🔁重来 | 🏠菜单',W/2,H/2+70*S);
+}
+
+// ──── Click Handling ────
+function handleClick(x,y){
+  if(G.phase==='menu'){
+    const cy=H/2;
+    if(y>cy-40*S&&y<cy+20*S){startGame();return;} // Start
+    if(y>cy+60*S&&y<cy+100*S){
+      if(x<W/2-60*S)showRoles();else if(x<W/2+60*S)showShop();// role / shop
+    }
+    return;
+  }
+  if(G.phase==='wheel'){applyLucky();return;}
+  if(G.phase==='over'){
+    if(y>H/2+50*S&&y<H/2+90*S){
+      if(x<W/3){if(G.revives>0){revive();}else{startGame();}}
+      else if(x<W*2/3){startGame();}else{G.phase='menu';}
+    }
+    return;
+  }
+  if(G.phase==='play'){
+    const by=H-40*S;if(y<by)return;
+    const bw=W/6;
+    if(x<bw)useHammer();
+    else if(x<bw*2)useEye();
+    else if(x<bw*3)spinWheel();
+    else if(x<bw*4)toggleSpeed();
+    else if(x<bw*5)recall();
+    else shootAll();
   }
 }
+function toggleSpeed(){const sp=[1,2,4,8],i=sp.indexOf(G.speedMul);G.speedMul=sp[(i+1)%4];toast('速度:'+G.speedMul+'×');}
+function startGame(){G.phase='play';G.layer=1;G.score=0;G.combo=0;G.spins=0;G.hammerOn=false;G.eyeOn=false;G.revives=3;const r=ROLES[G.role];let b=10;if(r.skill==='plus5')b+=5;if(r.skill==='plus10')b+=10;G.ballCnt=b;G.ballLaunched=0;G.balls=[];G.bricks=genLayer(1);}
+function showShop(){toast('🏪 商店 - 钱坤一击 💰20 | 透视之眼 💰15');}
+function showRoles(){toast('👤 角色选择 - 点击底部切换');}
 
-function updateUI(){
-  document.getElementById('s-layer').textContent=G.layer;
-  document.getElementById('s-balls').textContent=G.ballsInRound+G.balls.filter(b=>b.active).length;
-  document.getElementById('s-gold').textContent=G.gold;
-  document.getElementById('s-combo').textContent=G.combo||1;
-  document.getElementById('cnt-hammer').textContent=G.hammerCount;
-  document.getElementById('cnt-eye').textContent=G.eyeCount;
-  document.getElementById('btn-launch').disabled=G.phase!=='playing'||G.ballsInRound<=0;
-  document.getElementById('btn-recall').disabled=G.phase!=='playing'||G.balls.filter(b=>b.active).length===0;
-}
-
-// ──── roundRect polyfill ────
-if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){if(typeof r==='number')r={tl:r,tr:r,br:r,bl:r};this.moveTo(x+r.tl,y);this.lineTo(x+w-r.tr,y);this.quadraticCurveTo(x+w,y,x+w,y+r.tr);this.lineTo(x+w,y+h-r.br);this.quadraticCurveTo(x+w,y+h,x+w-r.br,y+h);this.lineTo(x+r.bl,y+h);this.quadraticCurveTo(x,y+h,x,y+h-r.bl);this.lineTo(x,y+r.tl);this.quadraticCurveTo(x,y,x+r.tl,y);this.closePath();};}
-
-// ──── Main Loop ────
-let lastTime=0;
-function gameLoop(t){
-  if(!lastTime)lastTime=t;
-  resize();update();render();updateUI();
-  requestAnimationFrame(gameLoop);
-}
-
-// ──── Init ────
-async function init(){
-  G=createGame();
-  resize();
-  // Show loading
-  ctx.fillStyle='#0a0a18';ctx.fillRect(0,0,cw,ch);
-  ctx.fillStyle='var(--text-dim)';ctx.font='18px Inter,sans-serif';ctx.textAlign='center';ctx.fillText('加载素材中...',cw/2,ch/2);
-
-  try{
-    await loadAllAssets();
-    console.log('Assets loaded');
-    showMenu();
-    requestAnimationFrame(gameLoop);
-  }catch(e){
-    console.error('Load error:',e);
-    ctx.fillText('加载失败，请刷新页面',cw/2,ch/2+30);
-  }
-}
-
+cvs.addEventListener('click',e=>{const p=getP(e);handleClick(p.x,p.y);});
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){if(G.hammerMode){G.hammerMode=false;updateUI();showToast('已取消');return;}if(document.getElementById('modal-overlay')){closeModal();return;}}
-  if(e.key===' '&&G.phase==='playing'){e.preventDefault();launchAll();}
-  if(e.key==='h'&&G.phase==='playing')useHammer();
-  if(e.key==='e'&&G.phase==='playing')useEye();
+  if(e.key==='Escape'){if(G.hammerOn){G.hammerOn=false;return;}G.phase='menu';}
+  if(e.key===' '&&G.phase==='play'){e.preventDefault();shootAll();}
+  if(e.key==='h')useHammer();if(e.key==='e')useEye();if(e.key==='w')spinWheel();
+  if(e.key==='s')toggleSpeed();if(e.key==='r')recall();
 });
 
+// ──── Main Loop ────
+function loop(){resize();update();render();requestAnimationFrame(loop);}
+
+async function init(){
+  resize();
+  // Load all assets
+  const proms=[];
+  for(const[k,u]of Object.entries(ATLAS_FILES)){proms.push(loadImg(k,u));proms.push(loadPlist(k,u.replace('.png','.plist')).catch(()=>{}));}
+  for(const rid of ROLE_IDS)proms.push(loadImg('role_'+rid,'sprites/role/'+rid+'.png'));
+  try{await Promise.all(proms);}catch(e){console.error(e);}
+  G.phase='menu';requestAnimationFrame(loop);
+}
 init();
 </script>
 </body>
