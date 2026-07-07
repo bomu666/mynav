@@ -147,13 +147,14 @@ cvs.addEventListener('pointerdown',e=>{
 });
 cvs.addEventListener('pointermove',e=>{
   if(G.phase!=='play'||!G.aimStart||G.launching)return;
-  const p=getP(e);G.aimCurrent={x:p.x,y:Math.min(p.y,G.aimStart.y)};
+  const p=getP(e);G.aimCurrent={x:p.x,y:Math.min(p.y,G.aimStart.y)}; // 只允许往上拖
 });
 cvs.addEventListener('pointerup',()=>{
   if(G.phase!=='play'||!G.aimStart||!G.aimCurrent||G.launching)return;
-  const dx=G.aimStart.x-G.aimCurrent.x,dy=G.aimStart.y-G.aimCurrent.y;
-  const pow=Math.min(Math.hypot(dx,dy)/5,20),ang=Math.atan2(dy,dx);
-  if(pow>2&&dy>5)shoot(ang,pow);
+  // 方向：从aimStart指向aimCurrent，往上=aimCurrent.y更小=dy为负
+  const dx=G.aimCurrent.x-G.aimStart.x, dy=G.aimCurrent.y-G.aimStart.y;
+  const pow=Math.min(Math.hypot(dx,dy)/5,20), ang=Math.atan2(dy,dx);
+  if(pow>2&&dy<-5)shoot(ang,pow); // dy必须为负=往上拖
   G.aimStart=G.aimCurrent=null;
 });
 
